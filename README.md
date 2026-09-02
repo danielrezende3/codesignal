@@ -19,6 +19,28 @@ Quatro simulados originais inspirados no formato de avaliações progressivas do
 
 ---
 
+## 🧪 Como Executar os Testes Progressivos
+
+O projeto está configurado para **execução progressiva**: o pytest só roda os testes da questão seguinte quando a anterior for concluída com sucesso.
+
+### 1. Rodar os testes de um mock específico:
+```bash
+uv run pytest mock1/
+```
+*(Executará `test_question_1.py`. Conforme você implementar a solução em `mock1/solution.py`, o pytest avançará automaticamente para `test_question_2.py`, e assim por diante).*
+
+### 2. Rodar apenas uma questão:
+```bash
+uv run pytest mock1/test_question_1.py
+```
+
+### 3. Rodar todos os mocks:
+```bash
+uv run pytest
+```
+
+---
+
 ## 🎯 Estratégia de Treino
 
 Trate os quatro mocks como **quatro provas separadas**, não como 16 exercícios.
@@ -35,9 +57,9 @@ Trate os quatro mocks como **quatro provas separadas**, não como 16 exercícios
 Para cada mock:
 
 1. Reserve **90 minutos**.
-2. Comece vendo somente o **Level 1**.
-3. Implemente e teste.
-4. Só então revele o **Level 2**.
+2. Comece vendo somente o **Level 1** no `README.md` e em `test_question_1.py`.
+3. Implemente em `solution.py` e teste com `uv run pytest <mock>/`.
+4. Só então avance para o **Level 2**.
 5. Repita para Levels 3 e 4.
 6. Todos os testes dos níveis anteriores devem continuar passando.
 

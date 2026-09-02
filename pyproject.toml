@@ -1,9 +1,14 @@
 [project]
 name = "codesignal"
 version = "0.1.0"
-description = "Add your description here"
+description = "Simulados progressivos CodeSignal em Python"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "pytest>=9.1.1",
 ]
+
+[tool.pytest.ini_options]
+addopts = "-x -v --tb=short"
+pythonpath = ["."]
+testpaths = ["mock1", "mock2", "mock3", "mock4"]
