@@ -32,20 +32,6 @@ copy_file(source: str, destination: str) -> bool
 - retorna `False` se `destination` já existir;
 - caso contrário retorna `True`.
 
-### Critérios de aceite
-
-```python
-fs.add_file("/a.txt", 100)          == True
-fs.add_file("/a.txt", 200)          == False
-fs.get_file_size("/a.txt")          == 100
-fs.get_file_size("/missing.txt")    is None
-
-fs.copy_file("/a.txt", "/b.txt")    == True
-fs.get_file_size("/b.txt")          == 100
-fs.copy_file("/missing", "/c.txt")  == False
-fs.copy_file("/a.txt", "/b.txt")    == False
-```
-
 ---
 
 ## Level 2 --- Busca e ordenação
@@ -68,30 +54,6 @@ Ordenação:
 
 1. maior tamanho primeiro;
 2. em caso de empate, nome lexicograficamente crescente.
-
-### Critérios de aceite
-
-Dado:
-
-```python
-fs.add_file("/docs/a.txt", 100)
-fs.add_file("/docs/b.txt", 300)
-fs.add_file("/docs/c.pdf", 500)
-fs.add_file("/docs/d.txt", 300)
-fs.add_file("/images/a.txt", 900)
-```
-
-Então:
-
-```python
-fs.find_files("/docs", ".txt") == [
-    "/docs/b.txt(300)",
-    "/docs/d.txt(300)",
-    "/docs/a.txt(100)",
-]
-
-fs.find_files("/nothing", ".txt") == []
-```
 
 ---
 
@@ -145,22 +107,6 @@ Remova primeiro:
 
 Retorne a quantidade de arquivos removidos.
 
-### Critérios de aceite
-
-```python
-fs.add_user("daniel", 1000) == True
-fs.add_user("daniel", 500)  == False
-
-fs.add_file_by("daniel", "/a", 400) == 600
-fs.add_file_by("daniel", "/b", 300) == 300
-fs.add_file_by("daniel", "/c", 400) is None
-
-fs.update_capacity("daniel", 500) == 1
-
-fs.get_file_size("/a") is None
-fs.get_file_size("/b") == 300
-```
-
 ---
 
 ## Level 4 --- Compressão
@@ -188,17 +134,3 @@ decompress_file(user_id: str, name: str) -> int | None
 - remove `.COMPRESSED`;
 - não pode ultrapassar quota;
 - nome original não pode estar ocupado.
-
-### Critérios de aceite
-
-```python
-fs.add_user("u1", 1000)
-fs.add_file_by("u1", "/movie", 600)
-
-fs.compress_file("u1", "/movie") == 700
-fs.get_file_size("/movie") is None
-fs.get_file_size("/movie.COMPRESSED") == 300
-
-fs.decompress_file("u1", "/movie.COMPRESSED") == 400
-fs.get_file_size("/movie") == 600
-```
