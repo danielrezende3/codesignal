@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -118,6 +119,23 @@ def reset_solution(mock: str) -> None:
     solution_file.write_text(clean_code, encoding="utf-8")
 
 
+def sync_tests(mock: str, current_level: int) -> None:
+    mock_dir = ROOT_DIR / mock
+    source_tests = mock_dir / ".levels" / "tests"
+
+    for lvl in range(1, 5):
+        dest_file = mock_dir / f"test_question_{lvl}.py"
+        src_file = source_tests / f"test_question_{lvl}.py"
+
+        if lvl <= current_level:
+            if not dest_file.exists() and src_file.exists():
+                shutil.copy2(src_file, dest_file)
+        else:
+            if dest_file.exists():
+                dest_file.unlink()
+
+
+
 def cmd_start(args: argparse.Namespace) -> int:
     state = load_state()
     mock = get_active_mock(state, args.mock)
@@ -126,9 +144,10 @@ def cmd_start(args: argparse.Namespace) -> int:
     mock_info = state["mocks"].setdefault(mock, {"current_level": 1, "total_levels": 4})
     current_level = mock_info.get("current_level", 1)
 
-    # Garantir que o README reflete o nível atual
+    # Garantir que o README reflete o nível atual e testes sincronizados
     readme_file = ROOT_DIR / mock / "README.md"
     readme_file.write_text(build_readme_content(mock, current_level), encoding="utf-8")
+    sync_tests(mock, current_level)
 
     save_state(state)
 
@@ -179,12 +198,13 @@ def cmd_next(args: argparse.Namespace) -> int:
         print("💡 Use `uv run sim test` para ver o relatório detalhado de erros.")
         return 1
 
-    # Atualizar nível e README
+    # Atualizar nível, README e testes
     mock_info["current_level"] = next_level
     save_state(state)
 
     readme_file = ROOT_DIR / mock / "README.md"
     readme_file.write_text(build_readme_content(mock, next_level), encoding="utf-8")
+    sync_tests(mock, next_level)
 
     print()
     print("=" * 60)
@@ -192,6 +212,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     print(f"🔓 Level {next_level} de 4 desbloqueado com sucesso!")
     print("=" * 60)
     print(f"📖 Novos requisitos e assinaturas adicionados em: {mock}/README.md")
+    print(f"🧪 Novo arquivo de teste liberado: {mock}/test_question_{next_level}.py")
     print(f"✍️  Adicione os novos métodos em: {mock}/solution.py")
     print("🧪 Teste quando estiver pronto com: uv run sim test")
     print("=" * 60)
@@ -237,10 +258,12 @@ def cmd_reset(args: argparse.Namespace) -> int:
     readme_file = ROOT_DIR / mock / "README.md"
     readme_file.write_text(build_readme_content(mock, 1), encoding="utf-8")
     reset_solution(mock)
+    sync_tests(mock, 1)
 
     print(f"🔄 {MOCKS[mock]['name']} reiniciado com sucesso para o Level 1.")
     print(f"   • {mock}/README.md redefinido para Level 1.")
     print(f"   • {mock}/solution.py limpo (apenas classe base).")
+    print(f"   • {mock}/test_question_1.py ativo (testes futuros removidos).")
     return 0
 
 
