@@ -5,6 +5,7 @@
         "**/.hg": true,
         "**/.DS_Store": true,
         "**/Thumbs.db": true,
-        "**/.levels": true
+        "**/.levels": true,
+        "**/.sim_state.json": true
     }
 }
