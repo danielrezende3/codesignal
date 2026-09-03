@@ -1,8 +1,8 @@
-# Mock 1 --- File Storage
+# Mock 1 - File Storage
 
 Implemente `FileStorage`, um sistema de armazenamento de arquivos em memória.
 
-## Level 1 --- Operações básicas
+## Level 1 - Operações básicas
 
 Implemente:
 
@@ -32,9 +32,7 @@ copy_file(source: str, destination: str) -> bool
 - retorna `False` se `destination` já existir;
 - caso contrário retorna `True`.
 
----
-
-## Level 2 --- Busca e ordenação
+## Level 2 - Busca e ordenação
 
 Adicione:
 
@@ -55,9 +53,7 @@ Ordenação:
 1. maior tamanho primeiro;
 2. em caso de empate, nome lexicograficamente crescente.
 
----
-
-## Level 3 --- Usuários e quotas
+## Level 3 - Usuários e quotas
 
 Adicione:
 
@@ -107,9 +103,7 @@ Remova primeiro:
 
 Retorne a quantidade de arquivos removidos.
 
----
-
-## Level 4 --- Compressão
+## Level 4 - Compressão
 
 Adicione:
 

@@ -1,10 +1,10 @@
-# Mock 2 --- Banking System
+# Mock 2 - Banking System
 
 Implemente um banco em memória.
 
 Todos os métodos recebem `timestamp`, e as chamadas serão fornecidas em **ordem estritamente crescente de timestamp**.
 
-## Level 1 --- Contas
+## Level 1 - Contas
 
 ```python
 create_account(timestamp: int, account_id: str) -> bool
@@ -34,7 +34,7 @@ pay(
 
 ---
 
-## Level 2 --- Ranking
+## Level 2 - Ranking
 
 Adicione:
 
@@ -57,7 +57,7 @@ Ordenação:
 
 ---
 
-## Level 3 --- Transferências pendentes
+## Level 3 - Transferências pendentes
 
 Adicione:
 
@@ -103,7 +103,7 @@ Transferências só contam como `outgoing` depois de aceitas.
 
 ---
 
-## Level 4 --- Merge de contas
+## Level 4 - Merge de contas
 
 Adicione:
 

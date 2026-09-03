@@ -1,95 +1,39 @@
-# CodeSignal --- 4 Mocks Progressivos em Python
+# CodeSignal - Mocks Progressivos em Python
 
-Quatro simulados originais inspirados no formato de avaliações progressivas do CodeSignal.
+Simulados inspirados nas avaliações progressivas do CodeSignal (tempo sugerido: 90 min por mock).
 
-**Formato sugerido:** 90 minutos por mock.
 
-> Cada nível inclui todos os requisitos dos níveis anteriores. As assinaturas indicadas devem ser mantidas.
 
----
+## 🎯 Ordem Recomendada
 
-## 📂 Estrutura dos Mocks
+Resolva os mocks de forma progressiva (Level 1 → 4), mantendo a compatibilidade com os níveis anteriores:
 
-| Pasta | Simulado | Principal habilidade | Dificuldade |
-| :--- | :--- | :--- | :--- |
-| [**mock1/**](./mock1/README.md) | File Storage | Estado → ranking → ownership | ★★★ |
-| [**mock2/**](./mock2/README.md) | Banking System | Estado + operações pendentes + merge | ★★★★ |
-| [**mock3/**](./mock3/README.md) | In-Memory Database | `dict` → TTL → histórico | ★★★ |
-| [**mock4/**](./mock4/README.md) | Employee System | Intervalos + mudança de estado | ★★★★ |
+1. [**Mock 3 — In-Memory Database**](./mock3/README.md) (`dict` → TTL → histórico)
+2. [**Mock 1 — File Storage**](./mock1/README.md) (Estado → ranking → ownership)
+3. [**Mock 4 — Employee System**](./mock4/README.md) (Intervalos + mudança de estado)
+4. [**Mock 2 — Banking System**](./mock2/README.md) (Estado + operações pendentes + merge)
 
----
 
-## 🧪 Como Executar os Testes Progressivos
 
-O projeto está configurado para **execução progressiva**: o pytest só roda os testes da questão seguinte quando a anterior for concluída com sucesso.
+## 🧪 Testes
 
-### 1. Rodar os testes de um mock específico:
+A execução é progressiva: o pytest só avança para o próximo nível quando o atual passar.
+
 ```bash
-uv run pytest mock1/
-```
-*(Executará `test_question_1.py`. Conforme você implementar a solução em `mock1/solution.py`, o pytest avançará automaticamente para `test_question_2.py`, e assim por diante).*
+# Rodar um mock específico (ex: Mock 3)
+uv run pytest mock3/
 
-### 2. Rodar apenas uma questão:
-```bash
-uv run pytest mock1/test_question_1.py
-```
+# Rodar apenas uma questão
+uv run pytest mock3/test_question_1.py
 
-### 3. Rodar todos os mocks:
-```bash
+# Rodar todos os mocks
 uv run pytest
 ```
 
----
-
-## 🧹 Linting e Formatação com Ruff
-
-Para verificar e formatar o código:
+## 🧹 Linting e Formatação
 
 ```bash
-# Verificar problemas de linting
-uv run ruff check .
-
-# Corrigir automaticamente problemas corrigíveis
-uv run ruff check --fix .
-
-# Formatar arquivos
-uv run ruff format .
+uv run ruff check .          # Verificar lint
+uv run ruff check --fix .    # Corrigir lint automaticamente
+uv run ruff format .         # Formatar código
 ```
-
----
-
-## 🎯 Estratégia de Treino
-
-Trate os quatro mocks como **quatro provas separadas**, não como 16 exercícios.
-
-### Ordem recomendada
-
-1. [**Mock 3 --- In-Memory Database**](./mock3/README.md)
-2. [**Mock 1 --- File Storage**](./mock1/README.md)
-3. [**Mock 4 --- Employee System**](./mock4/README.md)
-4. [**Mock 2 --- Banking System**](./mock2/README.md)
-
-### Método
-
-Para cada mock:
-
-1. Reserve **90 minutos**.
-2. Comece vendo somente o **Level 1** no `README.md` e em `test_question_1.py`.
-3. Implemente em `solution.py` e teste com `uv run pytest <mock>/`.
-4. Só então avance para o **Level 2**.
-5. Repita para Levels 3 e 4.
-6. Todos os testes dos níveis anteriores devem continuar passando.
-
-#### Divisão de tempo sugerida
-
-```text
-Level 1     15 min
-Level 2     15 min
-Level 3     25 min
-Level 4     25 min
-Debug       10 min
-------------------
-Total       90 min
-```
-
-A progressão deliberada força a refatoração das estruturas de dados conforme novos requisitos aparecem, aproximando o treino do formato de uma avaliação progressiva.

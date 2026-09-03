@@ -1,6 +1,6 @@
-# Mock 3 --- In-Memory Database
+# Mock 3 - In-Memory Database
 
-## Level 1 --- CRUD
+## Level 1 - CRUD
 
 Armazene:
 
@@ -18,7 +18,7 @@ delete(timestamp, key, field) -> bool
 
 ---
 
-## Level 2 --- Scan
+## Level 2 - Scan
 
 Adicione:
 
@@ -42,7 +42,7 @@ Sempre ordene por `field` lexicograficamente.
 
 ---
 
-## Level 3 --- TTL
+## Level 3 - TTL
 
 Adicione:
 
@@ -69,7 +69,7 @@ Portanto:
 
 ---
 
-## Level 4 --- Consultas históricas
+## Level 4 - Consultas históricas
 
 Adicione:
 

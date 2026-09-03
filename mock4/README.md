@@ -1,6 +1,6 @@
-# Mock 4 --- Employee System
+# Mock 4 - Employee System
 
-## Level 1 --- Funcionários e horas
+## Level 1 - Funcionários e horas
 
 Implemente:
 
@@ -32,7 +32,7 @@ dentro -> saiu
 
 ---
 
-## Level 2 --- Ranking
+## Level 2 - Ranking
 
 Adicione:
 
@@ -58,7 +58,7 @@ Ordenação:
 
 ---
 
-## Level 3 --- Promoções
+## Level 3 - Promoções
 
 Adicione:
 
@@ -80,7 +80,7 @@ Uma promoção fica **pendente**.
 
 ---
 
-## Level 4 --- Salário por período
+## Level 4 - Salário por período
 
 Adicione:
 
