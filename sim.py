@@ -66,10 +66,13 @@ def load_state() -> dict:
             return json.loads(STATE_FILE.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             pass
-    return {
-        "active_mock": "mock3",
+
+    default_state = {
+        "active_mock": None,
         "mocks": {m: {"current_level": 1, "total_levels": 4} for m in MOCKS},
     }
+    save_state(default_state)
+    return default_state
 
 
 def save_state(state: dict) -> None:
@@ -83,7 +86,13 @@ def get_active_mock(state: dict, requested: str | None = None) -> str:
             return normalized
         print(f"❌ Mock inválido: '{requested}'. Opções: mock1, mock2, mock3, mock4 (ou 1, 2, 3, 4)")
         sys.exit(1)
-    return state.get("active_mock", "mock3")
+
+    active = state.get("active_mock")
+    if not active:
+        print("⚠️  Nenhum simulado está ativo no momento.")
+        print("👉 Use 'uv run sim start <mock>' para iniciar um simulado (ex: uv run sim start 3).")
+        sys.exit(1)
+    return active
 
 
 def build_readme_content(mock: str, max_level: int) -> str:
@@ -138,6 +147,11 @@ def sync_tests(mock: str, current_level: int) -> None:
 
 def cmd_start(args: argparse.Namespace) -> int:
     state = load_state()
+    if not args.mock and not state.get("active_mock"):
+        print("⚠️  Informe qual mock deseja iniciar.")
+        print("👉 Exemplo: uv run sim start 3  (ordem recomendada: 3 -> 1 -> 4 -> 2)")
+        return 1
+
     mock = get_active_mock(state, args.mock)
     state["active_mock"] = mock
 
@@ -221,7 +235,12 @@ def cmd_next(args: argparse.Namespace) -> int:
 
 def cmd_status(args: argparse.Namespace) -> int:
     state = load_state()
-    active_mock = state.get("active_mock", "mock3")
+    active_mock = state.get("active_mock")
+    active_title = (
+        MOCKS[active_mock]["name"]
+        if active_mock and active_mock in MOCKS
+        else "Nenhum (use 'uv run sim start <mock>')"
+    )
 
     # Mocks ordenados pela ordem recomendada
     sorted_mocks = sorted(MOCKS.keys(), key=lambda m: MOCKS[m]["order"])
@@ -229,7 +248,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     print("=" * 64)
     print("                CodeSignal - Status dos Mocks")
     print("=" * 64)
-    print(f"Simulado ativo: {MOCKS[active_mock]['name']}\n")
+    print(f"Simulado ativo: {active_title}\n")
 
     for m in sorted_mocks:
         info = state["mocks"].get(m, {"current_level": 1, "total_levels": 4})
@@ -250,6 +269,10 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def cmd_reset(args: argparse.Namespace) -> int:
     state = load_state()
+    if not args.mock and not state.get("active_mock"):
+        print("⚠️  Informe qual mock deseja reiniciar (ex: uv run sim reset 3).")
+        return 1
+
     mock = get_active_mock(state, args.mock)
 
     state["mocks"][mock] = {"current_level": 1, "total_levels": 4}
