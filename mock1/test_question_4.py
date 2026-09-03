@@ -1,5 +1,5 @@
-import pytest
 from mock1.solution import FileStorage
+
 
 def test_compression_and_decompression_basic():
     fs = FileStorage()
@@ -14,10 +14,13 @@ def test_compression_and_decompression_basic():
     assert fs.get_file_size("/movie") == 600
     assert fs.get_file_size("/movie.COMPRESSED") is None
 
+
 def test_compress_odd_size_integer_division():
     fs = FileStorage()
     fs.add_user("u1", 500)
-    fs.add_file_by("u1", "/odd", 101)  # 101 // 2 = 50. Quota usada passa de 101 para 50.
+    fs.add_file_by(
+        "u1", "/odd", 101
+    )  # 101 // 2 = 50. Quota usada passa de 101 para 50.
 
     # 500 - 50 = 450 restante
     assert fs.compress_file("u1", "/odd") == 450
@@ -26,6 +29,7 @@ def test_compress_odd_size_integer_division():
     # Descompactar: 50 * 2 = 100. Quota usada passa para 100. Restante 400.
     assert fs.decompress_file("u1", "/odd.COMPRESSED") == 400
     assert fs.get_file_size("/odd") == 100
+
 
 def test_compress_invalid_cases():
     fs = FileStorage()
@@ -44,6 +48,7 @@ def test_compress_invalid_cases():
     # Cannot compress already compressed file
     assert fs.compress_file("u1", "/file1.COMPRESSED") is None
 
+
 def test_compress_target_already_exists():
     fs = FileStorage()
     fs.add_user("u1", 1000)
@@ -53,6 +58,7 @@ def test_compress_target_already_exists():
     # Tentativa de compactar /file1 quando /file1.COMPRESSED já existe deve falhar
     assert fs.compress_file("u1", "/file1") is None
     assert fs.get_file_size("/file1") == 200
+
 
 def test_decompress_exceeds_quota():
     fs = FileStorage()
@@ -66,6 +72,7 @@ def test_decompress_exceeds_quota():
     assert fs.decompress_file("u1", "/f1.COMPRESSED") is None
     assert fs.get_file_size("/f1.COMPRESSED") == 200
 
+
 def test_decompress_target_already_occupied():
     fs = FileStorage()
     fs.add_user("u1", 1000)
@@ -78,6 +85,7 @@ def test_decompress_target_already_occupied():
     # Descompactar /doc.COMPRESSED não pode sobrescrever /doc existente
     assert fs.decompress_file("u1", "/doc.COMPRESSED") is None
     assert fs.get_file_size("/doc.COMPRESSED") == 100
+
 
 def test_decompress_not_ending_in_compressed():
     fs = FileStorage()

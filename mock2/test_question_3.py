@@ -1,4 +1,3 @@
-import pytest
 from mock2.solution import BankingSystem
 
 
@@ -37,10 +36,10 @@ def test_transfer_id_sequencing_only_on_success():
     bank.deposit(3, "A", 500)
 
     # Failed transfers (insufficient funds, non-existent accounts, self-transfer)
-    assert bank.transfer(4, "A", "B", 1000) is None       # Insufficient funds
-    assert bank.transfer(5, "A", "Missing", 100) is None   # Target doesn't exist
-    assert bank.transfer(6, "Missing", "B", 100) is None   # Source doesn't exist
-    assert bank.transfer(7, "A", "A", 100) is None         # Self-transfer
+    assert bank.transfer(4, "A", "B", 1000) is None  # Insufficient funds
+    assert bank.transfer(5, "A", "Missing", 100) is None  # Target doesn't exist
+    assert bank.transfer(6, "Missing", "B", 100) is None  # Source doesn't exist
+    assert bank.transfer(7, "A", "A", 100) is None  # Self-transfer
 
     # First successful transfer must be "transfer1"
     tid1 = bank.transfer(8, "A", "B", 200)

@@ -17,10 +17,14 @@ class BankingSystem:
         raise NotImplementedError("Level 2: top_spenders não implementado")
 
     # Level 3
-    def transfer(self, timestamp: int, source: str, target: str, amount: int) -> str | None:
+    def transfer(
+        self, timestamp: int, source: str, target: str, amount: int
+    ) -> str | None:
         raise NotImplementedError("Level 3: transfer não implementado")
 
-    def accept_transfer(self, timestamp: int, account_id: str, transfer_id: str) -> bool:
+    def accept_transfer(
+        self, timestamp: int, account_id: str, transfer_id: str
+    ) -> bool:
         raise NotImplementedError("Level 3: accept_transfer não implementado")
 
     # Level 4

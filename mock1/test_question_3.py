@@ -1,5 +1,5 @@
-import pytest
 from mock1.solution import FileStorage
+
 
 def test_users_and_quotas_basic():
     fs = FileStorage()
@@ -18,6 +18,7 @@ def test_users_and_quotas_basic():
     assert fs.get_file_size("/a") is None
     assert fs.get_file_size("/b") == 300
 
+
 def test_add_file_by_nonexistent_user_and_duplicate_filename():
     fs = FileStorage()
     fs.add_user("u1", 500)
@@ -32,6 +33,7 @@ def test_add_file_by_nonexistent_user_and_duplicate_filename():
     # Quota não deve ter sido consumida
     assert fs.add_file_by("u1", "/f2", 400) == 0
 
+
 def test_admin_files_do_not_consume_user_quota():
     fs = FileStorage()
     assert fs.add_user("u1", 200) is True
@@ -39,6 +41,7 @@ def test_admin_files_do_not_consume_user_quota():
     assert fs.add_file("/admin_file", 1000) is True
     # u1 ainda tem seus 200 inteiros
     assert fs.add_file_by("u1", "/u1_file", 200) == 0
+
 
 def test_copy_file_preserves_owner_and_checks_quota():
     fs = FileStorage()
@@ -53,6 +56,7 @@ def test_copy_file_preserves_owner_and_checks_quota():
     assert fs.update_capacity("u1", 500) == 0
     assert fs.copy_file("/file1", "/file2") is True
     assert fs.get_file_size("/file2") == 200
+
 
 def test_update_capacity_tie_breaker_complex():
     fs = FileStorage()
@@ -74,6 +78,7 @@ def test_update_capacity_tie_breaker_complex():
     assert fs.get_file_size("/a_mid") is None
     assert fs.get_file_size("/b_mid") is None
     assert fs.get_file_size("/c_mid") == 200
+
 
 def test_update_capacity_no_removal_needed():
     fs = FileStorage()

@@ -1,5 +1,5 @@
-import pytest
 from mock1.solution import FileStorage
+
 
 def test_add_and_get_file_size():
     fs = FileStorage()
@@ -8,11 +8,13 @@ def test_add_and_get_file_size():
     assert fs.get_file_size("/a.txt") == 100
     assert fs.get_file_size("/missing.txt") is None
 
+
 def test_add_file_with_zero_size():
     fs = FileStorage()
     assert fs.add_file("/empty.txt", 0) is True
     assert fs.get_file_size("/empty.txt") == 0
     assert fs.add_file("/empty.txt", 0) is False
+
 
 def test_copy_file_basic():
     fs = FileStorage()
@@ -22,12 +24,14 @@ def test_copy_file_basic():
     assert fs.copy_file("/missing", "/c.txt") is False
     assert fs.copy_file("/a.txt", "/b.txt") is False  # Destination already exists
 
+
 def test_copy_file_to_self():
     fs = FileStorage()
     fs.add_file("/a.txt", 100)
     # Copying a file to its own name should fail because destination already exists
     assert fs.copy_file("/a.txt", "/a.txt") is False
     assert fs.get_file_size("/a.txt") == 100
+
 
 def test_multiple_files_and_copies_independence():
     fs = FileStorage()

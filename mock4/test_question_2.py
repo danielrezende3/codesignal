@@ -1,4 +1,3 @@
-import pytest
 from mock4.solution import EmployeeSystem
 
 

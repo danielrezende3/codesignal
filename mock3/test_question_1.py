@@ -1,5 +1,5 @@
-import pytest
 from mock3.solution import InMemoryDB
+
 
 def test_set_get_and_delete_basic():
     db = InMemoryDB()
@@ -15,14 +15,18 @@ def test_set_get_and_delete_basic():
     assert db.get(8, "user1", "age") is None
     assert db.delete(9, "user1", "age") is False
 
+
 def test_overwrite_field_and_values():
     db = InMemoryDB()
     db.set(1, "A", "val", 10)
     assert db.get(2, "A", "val") == 10
     db.set(3, "A", "val", 20)
     assert db.get(4, "A", "val") == 20
-    db.set(5, "A", "val", 0)  # Value 0 should be stored and returned as 0, not treated as None/falsy
+    db.set(
+        5, "A", "val", 0
+    )  # Value 0 should be stored and returned as 0, not treated as None/falsy
     assert db.get(6, "A", "val") == 0
+
 
 def test_multiple_keys_isolation():
     db = InMemoryDB()

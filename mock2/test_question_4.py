@@ -1,4 +1,3 @@
-import pytest
 from mock2.solution import BankingSystem
 
 

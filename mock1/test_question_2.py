@@ -1,5 +1,5 @@
-import pytest
 from mock1.solution import FileStorage
+
 
 def test_find_files_basic():
     fs = FileStorage()
@@ -15,6 +15,7 @@ def test_find_files_basic():
         "/docs/a.txt(100)",
     ]
     assert fs.find_files("/nothing", ".txt") == []
+
 
 def test_find_files_empty_prefix_or_suffix():
     fs = FileStorage()
@@ -33,6 +34,7 @@ def test_find_files_empty_prefix_or_suffix():
         "/docs/a.txt(100)",
     ]
 
+
 def test_find_files_sorting_ties_and_alphabetical():
     fs = FileStorage()
     fs.add_file("/z.txt", 200)
@@ -48,6 +50,7 @@ def test_find_files_sorting_ties_and_alphabetical():
         "/m.txt(200)",
         "/z.txt(200)",
     ]
+
 
 def test_find_files_overlapping_prefix_suffix():
     fs = FileStorage()
@@ -69,6 +72,7 @@ def test_find_files_overlapping_prefix_suffix():
         "aba(50)",
         "a(10)",
     ]
+
 
 def test_find_files_empty_storage():
     fs = FileStorage()
