@@ -1,31 +1,33 @@
-## Level 1 - Operações básicas
+## Level 1 - CRUD
+
+Armazene dados no formato:
+```text
+record -> field -> value
+```
 
 ### Assinaturas
 ```python
-class FileStorage:
-    def add_file(self, name: str, size: int) -> bool:
+class InMemoryDB:
+    def set(self, timestamp: int, key: str, field: str, value: int) -> None:
         ...
 
-    def get_file_size(self, name: str) -> int | None:
+    def get(self, timestamp: int, key: str, field: str) -> int | None:
         ...
 
-    def copy_file(self, source: str, destination: str) -> bool:
+    def delete(self, timestamp: int, key: str, field: str) -> bool:
         ...
 ```
 
 ### Requisitos
 
-`add_file(name, size)` adiciona um arquivo:
-- `name` é único.
-- Retorna `False` se já existir.
-- Caso contrário, adiciona e retorna `True`.
+`set(timestamp, key, field, value)`:
+- Define ou atualiza o valor do campo `field` no registro `key`.
 
-`get_file_size(name)`:
-- Retorna o tamanho do arquivo;
-- Retorna `None` se não existir.
+`get(timestamp, key, field)`:
+- Retorna o valor de `field` no registro `key`.
+- Retorna `None` se o registro ou o campo não existirem.
 
-`copy_file(source, destination)`:
-- Cria `destination` com o mesmo tamanho de `source`;
-- Retorna `False` se `source` não existir;
-- Retorna `False` se `destination` já existir;
-- Caso contrário retorna `True`.
+`delete(timestamp, key, field)`:
+- Remove o campo `field` do registro `key`.
+- Retorna `True` se o campo existia e foi removido.
+- Retorna `False` se o registro ou o campo não existiam.

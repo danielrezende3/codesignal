@@ -1,25 +1,31 @@
 ---
 
-## Level 4 - Merge de contas
+## Level 4 - Compressão
 
 ### Assinaturas adicionadas
 ```python
-class BankingSystem:
-    def merge_accounts(self, timestamp: int, target: str, source: str) -> bool:
+class FileStorage:
+    def compress_file(self, user_id: str, name: str) -> int | None:
+        ...
+
+    def decompress_file(self, user_id: str, name: str) -> int | None:
         ...
 ```
 
 ### Requisitos
 
-Faça o merge de `source` em `target`.
+`compress_file(user_id, name)`:
+- Arquivo precisa existir;
+- Precisa pertencer ao usuário;
+- Arquivo não pode já terminar em `.COMPRESSED`;
+- Novo tamanho é `size // 2`;
+- Arquivo passa de `name` para `name.COMPRESSED`;
+- Retorna a capacidade restante (ou `None` se falhar).
 
-Regras:
-- Ambas as contas precisam existir;
-- Não podem ser a mesma conta;
-- O saldo de `source` é adicionado a `target`;
-- O `outgoing` de ambas é somado em `target`;
-- `source` deixa de existir.
-
-Transferências pendentes envolvendo `source` devem passar a referenciar `target`.
-
-Se isso fizer origem e destino da transferência se tornarem iguais, cancele a transferência e devolva o valor à conta resultante (`target`).
+`decompress_file(user_id, name)` realiza o inverso:
+- Nome precisa terminar em `.COMPRESSED`;
+- Tamanho dobra;
+- Remove `.COMPRESSED`;
+- Não pode ultrapassar quota;
+- Nome original não pode estar ocupado;
+- Retorna a capacidade restante (ou `None` se falhar).

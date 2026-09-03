@@ -1,22 +1,28 @@
 ---
 
-## Level 4 - Consultas históricas
+## Level 4 - Salário por período
 
 ### Assinaturas adicionadas
 ```python
-class InMemoryDB:
-    def get_at(self, timestamp: int, key: str, field: str, at_timestamp: int) -> int | None:
+class EmployeeSystem:
+    def calc_salary(
+        self,
+        employee_id: str,
+        start_timestamp: int,
+        end_timestamp: int
+    ) -> int | None:
         ...
 ```
 
 ### Requisitos
 
-> Qual era o valor desse campo em `at_timestamp`?
+Calcula a remuneração devida ao funcionário no intervalo:
+```text
+[start_timestamp, end_timestamp)
+```
 
-Considere:
-- Criação e modificações anteriores a `at_timestamp`;
-- Sobrescrita;
-- Delete;
-- TTL;
-- Recriação posterior.
-- Retorne `None` se o campo não existia ou estava expirado/removido naquele momento histórico.
+Regras:
+- `compensation` representa pagamento **por unidade de tempo trabalhada**.
+- Calcule somente a interseção dos períodos efetivamente trabalhados com `[start_timestamp, end_timestamp)`.
+- Considere a remuneração vigente em cada período de trabalho.
+- Retorne `None` se o funcionário não existir.

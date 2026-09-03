@@ -1,25 +1,28 @@
-class EmployeeSystem:
+class BankingSystem:
     def __init__(self):
         pass
 
     # Level 1
-    def add_employee(self, employee_id: str, position: str, compensation: int) -> bool:
-        raise NotImplementedError("Level 1: add_employee não implementado")
+    def create_account(self, timestamp: int, account_id: str) -> bool:
+        raise NotImplementedError("Level 1: create_account não implementado")
 
-    def register(self, employee_id: str, timestamp: int) -> str:
-        raise NotImplementedError("Level 1: register não implementado")
+    def deposit(self, timestamp: int, account_id: str, amount: int) -> int | None:
+        raise NotImplementedError("Level 1: deposit não implementado")
 
-    def get_worked_time(self, employee_id: str) -> int | None:
-        raise NotImplementedError("Level 1: get_worked_time não implementado")
+    def pay(self, timestamp: int, account_id: str, amount: int) -> int | None:
+        raise NotImplementedError("Level 1: pay não implementado")
 
     # Level 2
-    def top_n_employees(self, n: int, position: str) -> list[str]:
-        raise NotImplementedError("Level 2: top_n_employees não implementado")
+    def top_spenders(self, timestamp: int, n: int) -> list[str]:
+        raise NotImplementedError("Level 2: top_spenders não implementado")
 
     # Level 3
-    def promote(self, employee_id: str, new_position: str, new_compensation: int, start_timestamp: int) -> bool:
-        raise NotImplementedError("Level 3: promote não implementado")
+    def transfer(self, timestamp: int, source: str, target: str, amount: int) -> str | None:
+        raise NotImplementedError("Level 3: transfer não implementado")
+
+    def accept_transfer(self, timestamp: int, account_id: str, transfer_id: str) -> bool:
+        raise NotImplementedError("Level 3: accept_transfer não implementado")
 
     # Level 4
-    def calc_salary(self, employee_id: str, start_timestamp: int, end_timestamp: int) -> int | None:
-        raise NotImplementedError("Level 4: calc_salary não implementado")
+    def merge_accounts(self, timestamp: int, target: str, source: str) -> bool:
+        raise NotImplementedError("Level 4: merge_accounts não implementado")

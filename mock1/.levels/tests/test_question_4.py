@@ -1,94 +1,57 @@
-from mock1.solution import FileStorage
+from mock1.solution import InMemoryDB
 
 
-def test_compression_and_decompression_basic():
-    fs = FileStorage()
-    assert fs.add_user("u1", 1000) is True
-    assert fs.add_file_by("u1", "/movie", 600) == 400
+def test_get_at_historical_queries_basic():
+    db = InMemoryDB()
+    db.set(10, "A", "x", 100)
+    db.set_with_ttl(20, "A", "x", 200, 20)  # [20, 40)
+    db.set(50, "A", "x", 300)
 
-    assert fs.compress_file("u1", "/movie") == 700
-    assert fs.get_file_size("/movie") is None
-    assert fs.get_file_size("/movie.COMPRESSED") == 300
-
-    assert fs.decompress_file("u1", "/movie.COMPRESSED") == 400
-    assert fs.get_file_size("/movie") == 600
-    assert fs.get_file_size("/movie.COMPRESSED") is None
+    assert db.get_at(100, "A", "x", 15) == 100
+    assert db.get_at(101, "A", "x", 25) == 200
+    assert db.get_at(102, "A", "x", 45) is None
+    assert db.get_at(103, "A", "x", 60) == 300
 
 
-def test_compress_odd_size_integer_division():
-    fs = FileStorage()
-    fs.add_user("u1", 500)
-    fs.add_file_by(
-        "u1", "/odd", 101
-    )  # 101 // 2 = 50. Quota usada passa de 101 para 50.
+def test_get_at_before_creation_and_nonexistent():
+    db = InMemoryDB()
+    db.set(20, "user", "score", 50)
 
-    # 500 - 50 = 450 restante
-    assert fs.compress_file("u1", "/odd") == 450
-    assert fs.get_file_size("/odd.COMPRESSED") == 50
-
-    # Descompactar: 50 * 2 = 100. Quota usada passa para 100. Restante 400.
-    assert fs.decompress_file("u1", "/odd.COMPRESSED") == 400
-    assert fs.get_file_size("/odd") == 100
+    # Antes da criação inicial
+    assert db.get_at(100, "user", "score", 10) is None
+    assert db.get_at(100, "user", "score", 19) is None
+    # No exato momento da criação
+    assert db.get_at(100, "user", "score", 20) == 50
+    # Registro ou campo inexistente
+    assert db.get_at(100, "missing", "score", 50) is None
+    assert db.get_at(100, "user", "missing", 50) is None
 
 
-def test_compress_invalid_cases():
-    fs = FileStorage()
-    fs.add_user("u1", 1000)
-    fs.add_user("u2", 1000)
-    fs.add_file_by("u1", "/file1", 200)
+def test_get_at_with_delete_and_recreation():
+    db = InMemoryDB()
+    db.set(10, "key", "f", 100)  # [10, 30) -> 100
+    db.delete(30, "key", "f")  # [30, 50) -> None
+    db.set(50, "key", "f", 200)  # [50, 70) -> 200
+    db.delete(70, "key", "f")  # >= 70    -> None
 
-    # Wrong user
-    assert fs.compress_file("u2", "/file1") is None
-    # File doesn't exist
-    assert fs.compress_file("u1", "/missing") is None
-
-    # Compress successfully
-    assert fs.compress_file("u1", "/file1") == 900
-
-    # Cannot compress already compressed file
-    assert fs.compress_file("u1", "/file1.COMPRESSED") is None
-
-
-def test_compress_target_already_exists():
-    fs = FileStorage()
-    fs.add_user("u1", 1000)
-    fs.add_file_by("u1", "/file1", 200)
-    fs.add_file_by("u1", "/file1.COMPRESSED", 100)
-
-    # Tentativa de compactar /file1 quando /file1.COMPRESSED já existe deve falhar
-    assert fs.compress_file("u1", "/file1") is None
-    assert fs.get_file_size("/file1") == 200
+    assert db.get_at(100, "key", "f", 10) == 100
+    assert db.get_at(100, "key", "f", 29) == 100
+    assert db.get_at(100, "key", "f", 30) is None
+    assert db.get_at(100, "key", "f", 49) is None
+    assert db.get_at(100, "key", "f", 50) == 200
+    assert db.get_at(100, "key", "f", 69) == 200
+    assert db.get_at(100, "key", "f", 70) is None
+    assert db.get_at(100, "key", "f", 100) is None
 
 
-def test_decompress_exceeds_quota():
-    fs = FileStorage()
-    fs.add_user("u1", 500)
-    fs.add_file_by("u1", "/f1", 400)
-    fs.compress_file("u1", "/f1")  # /f1.COMPRESSED tem 200, sobra 300
-    fs.add_file_by("u1", "/f2", 200)  # sobra 100
+def test_get_at_multiple_ttls_and_overrides():
+    db = InMemoryDB()
+    db.set_with_ttl(10, "k", "v", 10, 10)  # [10, 20) -> 10
+    db.set_with_ttl(30, "k", "v", 20, 10)  # [30, 40) -> 20
+    db.set(40, "k", "v", 30)  # >= 40    -> 30
 
-    # Para descompactar /f1.COMPRESSED, precisa de mais 200 (tamanho vira 400).
-    # Como só restam 100 de quota, deve falhar (retornar None).
-    assert fs.decompress_file("u1", "/f1.COMPRESSED") is None
-    assert fs.get_file_size("/f1.COMPRESSED") == 200
-
-
-def test_decompress_target_already_occupied():
-    fs = FileStorage()
-    fs.add_user("u1", 1000)
-    fs.add_file_by("u1", "/doc", 200)
-    fs.compress_file("u1", "/doc")  # vira /doc.COMPRESSED
-
-    # Cria um novo arquivo /doc enquanto /doc.COMPRESSED existe
-    fs.add_file_by("u1", "/doc", 100)
-
-    # Descompactar /doc.COMPRESSED não pode sobrescrever /doc existente
-    assert fs.decompress_file("u1", "/doc.COMPRESSED") is None
-    assert fs.get_file_size("/doc.COMPRESSED") == 100
-
-
-def test_decompress_not_ending_in_compressed():
-    fs = FileStorage()
-    fs.add_user("u1", 1000)
-    fs.add_file_by("u1", "/normal.txt", 100)
-    assert fs.decompress_file("u1", "/normal.txt") is None
+    assert db.get_at(100, "k", "v", 15) == 10
+    assert db.get_at(100, "k", "v", 25) is None
+    assert db.get_at(100, "k", "v", 35) == 20
+    assert db.get_at(100, "k", "v", 40) == 30
+    assert db.get_at(100, "k", "v", 99) == 30

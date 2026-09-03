@@ -16,27 +16,27 @@ ROOT_DIR = Path(__file__).resolve().parent
 STATE_FILE = ROOT_DIR / ".sim_state.json"
 
 MOCKS = {
-    "mock3": {
-        "id": "mock3",
-        "name": "Mock 3 — In-Memory Database",
+    "mock1": {
+        "id": "mock1",
+        "name": "Mock 1 — In-Memory Database",
         "class_name": "InMemoryDB",
         "order": 1,
     },
-    "mock1": {
-        "id": "mock1",
-        "name": "Mock 1 — File Storage",
+    "mock2": {
+        "id": "mock2",
+        "name": "Mock 2 — File Storage",
         "class_name": "FileStorage",
         "order": 2,
     },
-    "mock4": {
-        "id": "mock4",
-        "name": "Mock 4 — Employee System",
+    "mock3": {
+        "id": "mock3",
+        "name": "Mock 3 — Employee System",
         "class_name": "EmployeeSystem",
         "order": 3,
     },
-    "mock2": {
-        "id": "mock2",
-        "name": "Mock 2 — Banking System",
+    "mock4": {
+        "id": "mock4",
+        "name": "Mock 4 — Banking System",
         "class_name": "BankingSystem",
         "order": 4,
     },
@@ -259,7 +259,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 
     print("=" * 64)
     print("Comandos:")
-    print("  uv run sim start <mock>   # Seleciona mock (ex: mock3 ou 3)")
+    print("  uv run sim start <mock>   # Seleciona mock (ex: mock1 ou 1)")
     print("  uv run sim test           # Executa os testes do mock ativo")
     print("  uv run sim next           # Desbloqueia o próximo nível (após passar nos testes)")
     print("  uv run sim reset <mock>   # Reinicia o mock para o Level 1")

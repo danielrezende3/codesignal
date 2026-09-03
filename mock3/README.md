@@ -1,38 +1,38 @@
-# Mock 3 - In-Memory Database
+# Mock 3 - Employee System
 
-## Level 1 - CRUD
-
-Armazene dados no formato:
-```text
-record -> field -> value
-```
+## Level 1 - Funcionários e horas
 
 ### Assinaturas
 ```python
-class InMemoryDB:
-    def set(self, timestamp: int, key: str, field: str, value: int) -> None:
+class EmployeeSystem:
+    def add_employee(self, employee_id: str, position: str, compensation: int) -> bool:
         ...
 
-    def get(self, timestamp: int, key: str, field: str) -> int | None:
+    def register(self, employee_id: str, timestamp: int) -> str:
         ...
 
-    def delete(self, timestamp: int, key: str, field: str) -> bool:
+    def get_worked_time(self, employee_id: str) -> int | None:
         ...
 ```
 
 ### Requisitos
 
-`set(timestamp, key, field, value)`:
-- Define ou atualiza o valor do campo `field` no registro `key`.
+`add_employee(employee_id, position, compensation)`:
+- Adiciona um funcionário com sua posição e compensação por unidade de tempo.
+- Retorna `False` se o funcionário já existir; caso contrário `True`.
 
-`get(timestamp, key, field)`:
-- Retorna o valor de `field` no registro `key`.
-- Retorna `None` se o registro ou o campo não existirem.
+`register(employee_id, timestamp)` alterna o estado de presença do funcionário:
+```text
+fora -> entrou
+dentro -> saiu
+```
+- Retorne `"registered"` se a operação funcionar.
+- Retorne `""` se o funcionário não existir.
+- Períodos ainda não finalizados (atualmente dentro) não contam para o tempo trabalhado.
 
-`delete(timestamp, key, field)`:
-- Remove o campo `field` do registro `key`.
-- Retorna `True` se o campo existia e foi removido.
-- Retorna `False` se o registro ou o campo não existiam.
+`get_worked_time(employee_id)`:
+- Retorna o tempo total trabalhado (soma de todos os intervalos `saiu - entrou`).
+- Se o funcionário não existir, retorna `None`.
 
 ---
 > 💡 Quando passar nos testes deste nível (`uv run sim test`), use `uv run sim next` para desbloquear o Level 2.

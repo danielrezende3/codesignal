@@ -1,28 +1,34 @@
-class BankingSystem:
+class FileStorage:
     def __init__(self):
         pass
 
     # Level 1
-    def create_account(self, timestamp: int, account_id: str) -> bool:
-        raise NotImplementedError("Level 1: create_account não implementado")
+    def add_file(self, name: str, size: int) -> bool:
+        raise NotImplementedError("Level 1: add_file não implementado")
 
-    def deposit(self, timestamp: int, account_id: str, amount: int) -> int | None:
-        raise NotImplementedError("Level 1: deposit não implementado")
+    def get_file_size(self, name: str) -> int | None:
+        raise NotImplementedError("Level 1: get_file_size não implementado")
 
-    def pay(self, timestamp: int, account_id: str, amount: int) -> int | None:
-        raise NotImplementedError("Level 1: pay não implementado")
+    def copy_file(self, source: str, destination: str) -> bool:
+        raise NotImplementedError("Level 1: copy_file não implementado")
 
     # Level 2
-    def top_spenders(self, timestamp: int, n: int) -> list[str]:
-        raise NotImplementedError("Level 2: top_spenders não implementado")
+    def find_files(self, prefix: str, suffix: str) -> list[str]:
+        raise NotImplementedError("Level 2: find_files não implementado")
 
     # Level 3
-    def transfer(self, timestamp: int, source: str, target: str, amount: int) -> str | None:
-        raise NotImplementedError("Level 3: transfer não implementado")
+    def add_user(self, user_id: str, capacity: int) -> bool:
+        raise NotImplementedError("Level 3: add_user não implementado")
 
-    def accept_transfer(self, timestamp: int, account_id: str, transfer_id: str) -> bool:
-        raise NotImplementedError("Level 3: accept_transfer não implementado")
+    def add_file_by(self, user_id: str, name: str, size: int) -> int | None:
+        raise NotImplementedError("Level 3: add_file_by não implementado")
+
+    def update_capacity(self, user_id: str, capacity: int) -> int | None:
+        raise NotImplementedError("Level 3: update_capacity não implementado")
 
     # Level 4
-    def merge_accounts(self, timestamp: int, target: str, source: str) -> bool:
-        raise NotImplementedError("Level 4: merge_accounts não implementado")
+    def compress_file(self, user_id: str, name: str) -> int | None:
+        raise NotImplementedError("Level 4: compress_file não implementado")
+
+    def decompress_file(self, user_id: str, name: str) -> int | None:
+        raise NotImplementedError("Level 4: decompress_file não implementado")

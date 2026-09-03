@@ -1,90 +1,56 @@
-from mock1.solution import FileStorage
+from mock1.solution import InMemoryDB
 
 
-def test_users_and_quotas_basic():
-    fs = FileStorage()
-    assert fs.add_user("daniel", 1000) is True
-    assert fs.add_user("daniel", 500) is False
+def test_set_with_ttl_exact_boundaries():
+    db = InMemoryDB()
+    db.set_with_ttl(100, "A", "x", 42, 50)
 
-    assert fs.add_file_by("daniel", "/a", 400) == 600
-    assert fs.add_file_by("daniel", "/b", 300) == 300
-    # Ultrapassa capacidade (300 restante < 400)
-    assert fs.add_file_by("daniel", "/c", 400) is None
-
-    # Redução de capacidade: 500 total, arquivos atuais somam 700 (/a: 400, /b: 300).
-    # Deve remover o maior (/a de 400). Sobra /b (300 <= 500). Removeu 1 arquivo.
-    assert fs.update_capacity("daniel", 500) == 1
-
-    assert fs.get_file_size("/a") is None
-    assert fs.get_file_size("/b") == 300
+    # Válido no intervalo semi-aberto [100, 150)
+    assert db.get(100, "A", "x") == 42
+    assert db.get(125, "A", "x") == 42
+    assert db.get(149, "A", "x") == 42
+    assert db.get(150, "A", "x") is None
+    assert db.get(151, "A", "x") is None
 
 
-def test_add_file_by_nonexistent_user_and_duplicate_filename():
-    fs = FileStorage()
-    fs.add_user("u1", 500)
-    fs.add_file_by("u1", "/f1", 100)
+def test_ttl_with_scan_and_scan_by_prefix():
+    db = InMemoryDB()
+    db.set_with_ttl(100, "u", "f1", 10, 20)  # [100, 120)
+    db.set(105, "u", "f2", 20)  # Permanente
 
-    # Usuário inexistente
-    assert fs.add_file_by("ghost", "/ghost.txt", 100) is None
-    assert fs.update_capacity("ghost", 500) is None
+    # Em t = 110, ambos existem
+    assert db.scan(110, "u") == ["f1(10)", "f2(20)"]
+    assert db.scan_by_prefix(110, "u", "f") == ["f1(10)", "f2(20)"]
 
-    # Arquivo com nome já existente não pode ser adicionado
-    assert fs.add_file_by("u1", "/f1", 50) is None
-    # Quota não deve ter sido consumida
-    assert fs.add_file_by("u1", "/f2", 400) == 0
+    # Em t = 119, f1 ainda existe
+    assert db.scan(119, "u") == ["f1(10)", "f2(20)"]
 
-
-def test_admin_files_do_not_consume_user_quota():
-    fs = FileStorage()
-    assert fs.add_user("u1", 200) is True
-    # Arquivo de admin (add_file)
-    assert fs.add_file("/admin_file", 1000) is True
-    # u1 ainda tem seus 200 inteiros
-    assert fs.add_file_by("u1", "/u1_file", 200) == 0
+    # Em t = 120, f1 expirou exatamente
+    assert db.scan(120, "u") == ["f2(20)"]
+    assert db.scan_by_prefix(120, "u", "f") == ["f2(20)"]
 
 
-def test_copy_file_preserves_owner_and_checks_quota():
-    fs = FileStorage()
-    fs.add_user("u1", 300)
-    assert fs.add_file_by("u1", "/file1", 200) == 100
+def test_overwrite_ttl_with_permanent_set():
+    db = InMemoryDB()
+    db.set_with_ttl(10, "A", "k", 100, 10)  # Expiraria em 20
+    db.set(15, "A", "k", 200)  # Sobrescreve como permanente
 
-    # Cópia para /file2 precisa de mais 200, mas u1 só tem 100 restante -> deve falhar
-    assert fs.copy_file("/file1", "/file2") is False
-    assert fs.get_file_size("/file2") is None
-
-    # Se aumentar a capacidade, agora a cópia deve funcionar
-    assert fs.update_capacity("u1", 500) == 0
-    assert fs.copy_file("/file1", "/file2") is True
-    assert fs.get_file_size("/file2") == 200
+    assert db.get(25, "A", "k") == 200
 
 
-def test_update_capacity_tie_breaker_complex():
-    fs = FileStorage()
-    fs.add_user("u1", 1000)
-    fs.add_file_by("u1", "/z_large", 400)
-    fs.add_file_by("u1", "/c_mid", 200)
-    fs.add_file_by("u1", "/a_mid", 200)
-    fs.add_file_by("u1", "/b_mid", 200)
+def test_overwrite_permanent_with_ttl():
+    db = InMemoryDB()
+    db.set(10, "A", "k", 100)  # Permanente
+    db.set_with_ttl(20, "A", "k", 200, 10)  # Vira temporário [20, 30)
 
-    # Total = 1000. Reduz para 350.
-    # 1º a remover: maior tamanho -> /z_large (400). Sobram /a_mid (200), /b_mid (200), /c_mid (200) = 600.
-    # Ainda 600 > 350.
-    # 2º a remover (empate de 200): menor nome lexicográfico -> /a_mid. Sobram /b_mid, /c_mid = 400.
-    # Ainda 400 > 350.
-    # 3º a remover (empate de 200): menor nome lexicográfico -> /b_mid. Sobra /c_mid = 200 (<= 350).
-    # Total removidos = 3.
-    assert fs.update_capacity("u1", 350) == 3
-    assert fs.get_file_size("/z_large") is None
-    assert fs.get_file_size("/a_mid") is None
-    assert fs.get_file_size("/b_mid") is None
-    assert fs.get_file_size("/c_mid") == 200
+    assert db.get(25, "A", "k") == 200
+    assert db.get(30, "A", "k") is None
 
 
-def test_update_capacity_no_removal_needed():
-    fs = FileStorage()
-    fs.add_user("u1", 500)
-    fs.add_file_by("u1", "/a", 100)
-    # Aumentar ou manter capacidade retorna 0
-    assert fs.update_capacity("u1", 600) == 0
-    assert fs.update_capacity("u1", 200) == 0
-    assert fs.get_file_size("/a") == 100
+def test_delete_ttl_field_before_expiry():
+    db = InMemoryDB()
+    db.set_with_ttl(10, "A", "k", 100, 50)  # [10, 60)
+    assert db.delete(20, "A", "k") is True
+    assert db.get(25, "A", "k") is None
+    # Deletar novamente retorna False
+    assert db.delete(30, "A", "k") is False

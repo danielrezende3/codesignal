@@ -1,21 +1,24 @@
 ---
 
-## Level 3 - TTL
+## Level 3 - Promoções
 
 ### Assinaturas adicionadas
 ```python
-class InMemoryDB:
-    def set_with_ttl(self, timestamp: int, key: str, field: str, value: int, ttl: int) -> None:
+class EmployeeSystem:
+    def promote(
+        self,
+        employee_id: str,
+        new_position: str,
+        new_compensation: int,
+        start_timestamp: int
+    ) -> bool:
         ...
 ```
 
 ### Requisitos
 
-Define um valor com tempo de vida (TTL):
-- O valor existe no intervalo semiaberto:
-```text
-timestamp <= t < timestamp + ttl
-```
-- Portanto, em `t >= timestamp + ttl`, o valor é considerado expirado.
-- `get()`, `scan()` e `scan_by_prefix()` não podem retornar valores expirados.
-- Um novo `set()` ou `set_with_ttl()` sobrescreve o valor anterior e sua regra de expiração.
+Uma promoção fica **pendente**:
+- Ela entra em vigor no primeiro `register()` realizado em ou depois de `start_timestamp`, desde que o funcionário esteja fora do escritório antes desse registro.
+- Apenas uma promoção pode estar pendente por funcionário.
+- Retorna `False` se o funcionário não existir ou já tiver uma promoção pendente; caso contrário `True`.
+- Horas anteriores continuam pertencendo à posição anterior; `top_n_employees()` considera somente a posição atual.

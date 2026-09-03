@@ -1,80 +1,59 @@
-from mock1.solution import FileStorage
+from mock1.solution import InMemoryDB
 
 
-def test_find_files_basic():
-    fs = FileStorage()
-    fs.add_file("/docs/a.txt", 100)
-    fs.add_file("/docs/b.txt", 300)
-    fs.add_file("/docs/c.pdf", 500)
-    fs.add_file("/docs/d.txt", 300)
-    fs.add_file("/images/a.txt", 900)
+def test_scan_and_scan_by_prefix_basic():
+    db = InMemoryDB()
+    db.set(1, "user1", "age", 26)
+    db.set(2, "user1", "address", 10)
+    db.set(3, "user1", "score", 100)
 
-    assert fs.find_files("/docs", ".txt") == [
-        "/docs/b.txt(300)",
-        "/docs/d.txt(300)",
-        "/docs/a.txt(100)",
-    ]
-    assert fs.find_files("/nothing", ".txt") == []
-
-
-def test_find_files_empty_prefix_or_suffix():
-    fs = FileStorage()
-    fs.add_file("/docs/a.txt", 100)
-    fs.add_file("/docs/b.txt", 300)
-    fs.add_file("/photos/c.png", 200)
-
-    # Empty prefix matches all ending with suffix
-    assert fs.find_files("", ".png") == ["/photos/c.png(200)"]
-    # Empty suffix matches all starting with prefix
-    assert fs.find_files("/photos", "") == ["/photos/c.png(200)"]
-    # Both empty matches all files in the system, sorted by size desc then name asc
-    assert fs.find_files("", "") == [
-        "/docs/b.txt(300)",
-        "/photos/c.png(200)",
-        "/docs/a.txt(100)",
+    assert db.scan(10, "user1") == [
+        "address(10)",
+        "age(26)",
+        "score(100)",
     ]
 
+    assert db.scan_by_prefix(10, "user1", "a") == [
+        "address(10)",
+        "age(26)",
+    ]
 
-def test_find_files_sorting_ties_and_alphabetical():
-    fs = FileStorage()
-    fs.add_file("/z.txt", 200)
-    fs.add_file("/a.txt", 200)
-    fs.add_file("/m.txt", 200)
-    fs.add_file("/b.txt", 500)
-    fs.add_file("/c.txt", 500)
+    assert db.scan_by_prefix(10, "user1", "z") == []
+    assert db.scan(10, "missing_user") == []
+    assert db.scan_by_prefix(10, "missing_user", "a") == []
 
-    assert fs.find_files("/", ".txt") == [
-        "/b.txt(500)",
-        "/c.txt(500)",
-        "/a.txt(200)",
-        "/m.txt(200)",
-        "/z.txt(200)",
+
+def test_scan_sorting_and_deleted_fields():
+    db = InMemoryDB()
+    db.set(1, "rec", "beta", 2)
+    db.set(2, "rec", "alpha", 1)
+    db.set(3, "rec", "gamma", 3)
+    db.set(4, "rec", "delta", 4)
+
+    db.delete(5, "rec", "beta")
+
+    assert db.scan(6, "rec") == [
+        "alpha(1)",
+        "delta(4)",
+        "gamma(3)",
     ]
 
 
-def test_find_files_overlapping_prefix_suffix():
-    fs = FileStorage()
-    # File name is "aba"
-    fs.add_file("aba", 50)
-    fs.add_file("ababa", 100)
-    fs.add_file("a", 10)
+def test_scan_empty_prefix_matches_all():
+    db = InMemoryDB()
+    db.set(1, "rec", "b", 2)
+    db.set(2, "rec", "a", 1)
 
-    # Starts with "ab" and ends with "ba"
-    assert fs.find_files("ab", "ba") == [
-        "ababa(100)",
-        "aba(50)",
-    ]
-    # Exact full match
-    assert fs.find_files("aba", "aba") == ["aba(50)"]
-    # "a" starts with "a" and ends with "a"
-    assert fs.find_files("a", "a") == [
-        "ababa(100)",
-        "aba(50)",
-        "a(10)",
+    assert db.scan_by_prefix(3, "rec", "") == [
+        "a(1)",
+        "b(2)",
     ]
 
 
-def test_find_files_empty_storage():
-    fs = FileStorage()
-    assert fs.find_files("any", "thing") == []
-    assert fs.find_files("", "") == []
+def test_scan_all_fields_deleted():
+    db = InMemoryDB()
+    db.set(1, "rec", "f1", 10)
+    db.delete(2, "rec", "f1")
+
+    assert db.scan(3, "rec") == []
+    assert db.scan_by_prefix(3, "rec", "f") == []

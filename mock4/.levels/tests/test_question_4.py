@@ -1,204 +1,203 @@
-from mock4.solution import EmployeeSystem
+from mock4.solution import BankingSystem
 
 
-def test_calc_salary_basic():
-    hr = EmployeeSystem()
-    hr.add_employee("A", "dev", 5)
+def test_merge_accounts_basic_balance_and_outgoing_summation():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
 
-    # Turno 1: [10, 30] com compensation = 5
-    hr.register("A", 10)
-    hr.register("A", 30)
+    bank.deposit(3, "A", 1000)
+    bank.pay(4, "A", 300)  # A: balance=700, outgoing=300
 
-    # Promoção para compensation = 10 em timestamp 50
-    hr.promote("A", "dev", 10, 50)
+    bank.deposit(5, "B", 600)
+    bank.pay(6, "B", 200)  # B: balance=400, outgoing=200
 
-    # Turno 2: [50, 80] com compensation = 10
-    hr.register("A", 50)
-    hr.register("A", 80)
+    assert bank.merge_accounts(100, "A", "B") is True
 
-    # Consulta [20, 60):
-    # Interseção com turno 1: [20, 30) -> 10 * 5 = 50
-    # Interseção com turno 2: [50, 60) -> 10 * 10 = 100
-    # Total = 150
-    assert hr.calc_salary("A", 20, 60) == 150
+    # B ceases to exist
+    assert bank.deposit(101, "B", 100) is None
+    assert bank.pay(102, "B", 100) is None
 
-
-def test_calc_salary_shift_intervals_geometry():
-    """
-    Exhaustively tests all interval intersection geometries:
-    - shift completely inside query
-    - shift completely encloses query
-    - partial overlap left
-    - partial overlap right
-    - query completely before shift
-    - query completely after shift
-    - boundary touching (left / right)
-    - empty query interval [T, T)
-    - exact matching interval
-    """
-    hr = EmployeeSystem()
-    hr.add_employee("emp", "dev", 10)
-
-    # Shift: [20, 80] with compensation = 10
-    hr.register("emp", 20)
-    hr.register("emp", 80)
-
-    # Shift completely inside query [0, 100) -> 60 * 10 = 600
-    assert hr.calc_salary("emp", 0, 100) == 600
-
-    # Query exactly matches shift [20, 80) -> 60 * 10 = 600
-    assert hr.calc_salary("emp", 20, 80) == 600
-
-    # Shift completely encloses query [30, 60) -> 30 * 10 = 300
-    assert hr.calc_salary("emp", 30, 60) == 300
-
-    # Partial overlap on left: query [50, 100) -> [50, 80) = 30 * 10 = 300
-    assert hr.calc_salary("emp", 50, 100) == 300
-
-    # Partial overlap on right: query [0, 50) -> [20, 50) = 30 * 10 = 300
-    assert hr.calc_salary("emp", 0, 50) == 300
-
-    # Query completely before shift [0, 15) -> 0
-    assert hr.calc_salary("emp", 0, 15) == 0
-
-    # Boundary touching left [0, 20) -> 0
-    assert hr.calc_salary("emp", 0, 20) == 0
-
-    # Query completely after shift [90, 120) -> 0
-    assert hr.calc_salary("emp", 90, 120) == 0
-
-    # Boundary touching right [80, 100) -> 0
-    assert hr.calc_salary("emp", 80, 100) == 0
-
-    # Empty query interval [40, 40) -> 0
-    assert hr.calc_salary("emp", 40, 40) == 0
-
-    # Inverted query interval [60, 40) -> 0
-    assert hr.calc_salary("emp", 60, 40) == 0
+    # A has combined balance 700 + 400 = 1100 and outgoing 300 + 200 = 500
+    assert bank.top_spenders(103, 5) == ["A(500)"]
+    assert bank.pay(104, "A", 1100) == 0
 
 
-def test_calc_salary_multiple_shifts_and_gaps():
-    hr = EmployeeSystem()
-    hr.add_employee("worker", "engineer", 10)
+def test_merge_accounts_validation_failures():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.deposit(3, "A", 500)
 
-    # Shift 1: [10, 30]
-    hr.register("worker", 10)
-    hr.register("worker", 30)
+    # Same account merge
+    assert bank.merge_accounts(4, "A", "A") is False
 
-    # Shift 2: [50, 70]
-    hr.register("worker", 50)
-    hr.register("worker", 70)
+    # Missing target or source
+    assert bank.merge_accounts(5, "A", "Missing") is False
+    assert bank.merge_accounts(6, "Missing", "A") is False
+    assert bank.merge_accounts(7, "Missing1", "Missing2") is False
 
-    # Shift 3: [90, 120]
-    hr.register("worker", 90)
-    hr.register("worker", 120)
-
-    # Query in gap between shift 1 and 2: [35, 45) -> 0
-    assert hr.calc_salary("worker", 35, 45) == 0
-
-    # Query spanning shift 1 and 2 across gap: [20, 60)
-    # [20, 30) = 10 * 10 = 100
-    # [50, 60) = 10 * 10 = 100
-    assert hr.calc_salary("worker", 20, 60) == 200
-
-    # Query spanning all 3 shifts: [0, 150)
-    # (20 + 20 + 30) * 10 = 700
-    assert hr.calc_salary("worker", 0, 150) == 700
+    # Account state is preserved after failed merge
+    assert bank.pay(8, "A", 500) == 0
 
 
-def test_calc_salary_multiple_promotions_and_rate_changes():
-    hr = EmployeeSystem()
-    hr.add_employee("A", "junior", 10)
+def test_merged_source_account_deletion_subsequent_operations_fail():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
 
-    # Shift 1: [10, 40] @ rate 10 -> 30 * 10 = 300
-    hr.register("A", 10)
-    hr.register("A", 40)
+    bank.deposit(4, "A", 500)
+    bank.deposit(5, "B", 300)
+    bank.deposit(6, "C", 200)
 
-    # Promotion 1 to rate 20 at timestamp 50
-    assert hr.promote("A", "mid", 20, 50) is True
-    # Shift 2: [50, 80] @ rate 20 -> 30 * 20 = 600
-    hr.register("A", 50)
-    hr.register("A", 80)
+    assert bank.merge_accounts(7, "A", "B") is True
 
-    # Promotion 2 to rate 50 at timestamp 100
-    assert hr.promote("A", "senior", 50, 100) is True
-    # Shift 3: [100, 140] @ rate 50 -> 40 * 50 = 2000
-    hr.register("A", 100)
-    hr.register("A", 140)
-
-    # Spanning all 3 shifts completely: [0, 200) -> 300 + 600 + 2000 = 2900
-    assert hr.calc_salary("A", 0, 200) == 2900
-
-    # Partial overlaps across all 3 rates: [25, 120)
-    # Shift 1 [25, 40): 15 * 10 = 150
-    # Shift 2 [50, 80): 30 * 20 = 600
-    # Shift 3 [100, 120): 20 * 50 = 1000
-    # Total = 1750
-    assert hr.calc_salary("A", 25, 120) == 1750
+    # All operations targeting deleted account B must fail
+    assert bank.deposit(8, "B", 100) is None
+    assert bank.pay(9, "B", 50) is None
+    assert bank.transfer(10, "B", "C", 50) is None
+    assert bank.transfer(11, "C", "B", 50) is None
+    assert bank.merge_accounts(12, "C", "B") is False
+    assert bank.merge_accounts(13, "B", "C") is False
+    assert bank.top_spenders(14, 5) == ["A(0)", "C(0)"]
 
 
-def test_calc_salary_delayed_promotion_shift_compensation():
-    """
-    If employee clocks in before promotion timestamp and leaves after promotion timestamp,
-    the entire shift was worked under the old compensation rate.
-    The new compensation rate applies starting on the next entry from outside.
-    """
-    hr = EmployeeSystem()
-    hr.add_employee("emp", "dev", 10)
+def test_merge_pending_transfer_where_source_was_destination():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
 
-    # Promotion to rate 30 scheduled for T=100
-    assert hr.promote("emp", "dev", 30, 100) is True
+    bank.deposit(4, "C", 1000)
 
-    # Enters at 80 (before 100)
-    hr.register("emp", 80)
-    # Exits at 120 (after 100, but entered before 100 -> worked entirely at rate 10)
-    hr.register("emp", 120)
+    # C transfers 400 to B
+    tid = bank.transfer(5, "C", "B", 400)
+    assert tid == "transfer1"
 
-    # Enters at 130 (outside -> promo activates! rate is now 30)
-    hr.register("emp", 130)
-    # Exits at 160 (worked at rate 30)
-    hr.register("emp", 160)
+    # Merge B into A -> Transfer destination redirects from B to A (now C -> A)
+    assert bank.merge_accounts(6, "A", "B") is True
 
-    # Full period [80, 160):
-    # Shift 1: 40 * 10 = 400
-    # Shift 2: 30 * 30 = 900
-    # Total = 1300
-    assert hr.calc_salary("emp", 80, 160) == 1300
+    # Deleted account B cannot accept
+    assert bank.accept_transfer(7, "B", "transfer1") is False
 
-    # Partial period [100, 150):
-    # Shift 1 [100, 120): 20 * 10 = 200
-    # Shift 2 [130, 150): 20 * 30 = 600
-    # Total = 800
-    assert hr.calc_salary("emp", 100, 150) == 800
+    # Target account A can accept
+    assert bank.accept_transfer(8, "A", "transfer1") is True
+
+    # Funds credited to A, outgoing credited to C
+    assert bank.pay(9, "A", 400) == 0
+    assert bank.pay(10, "C", 600) == 0
+    assert bank.top_spenders(11, 2) == ["C(1000)", "A(400)"]
 
 
-def test_calc_salary_open_shift_not_counted():
-    hr = EmployeeSystem()
-    hr.add_employee("emp", "dev", 10)
+def test_merge_pending_transfer_where_source_was_origin():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
 
-    # Shift 1: [10, 50] @ 10 -> 400
-    hr.register("emp", 10)
-    hr.register("emp", 50)
+    bank.deposit(4, "B", 1000)
 
-    # Open shift starts at 60 (currently inside)
-    hr.register("emp", 60)
+    # B transfers 400 to C (B remaining balance = 600)
+    tid = bank.transfer(5, "B", "C", 400)
+    assert tid == "transfer1"
 
-    # Open shift [60, 100) must NOT be counted
-    assert hr.calc_salary("emp", 0, 100) == 400
-    assert hr.calc_salary("emp", 60, 100) == 0
+    # Merge B into A -> Transfer origin redirects from B to A (now A -> C)
+    # A receives B's remaining balance of 600
+    assert bank.merge_accounts(6, "A", "B") is True
 
-    # Once closed at 80, it becomes 400 + (20 * 10) = 600
-    hr.register("emp", 80)
-    assert hr.calc_salary("emp", 0, 100) == 600
+    # C accepts transfer
+    assert bank.accept_transfer(7, "C", "transfer1") is True
+
+    # C balance = 400; A's outgoing increases by 400 (transfer) + 600 (pay) = 1000
+    assert bank.pay(8, "C", 400) == 0
+    assert bank.pay(9, "A", 600) == 0
+    assert bank.top_spenders(10, 2) == ["A(1000)", "C(400)"]
 
 
-def test_calc_salary_nonexistent_and_zero_worked():
-    hr = EmployeeSystem()
-    hr.add_employee("emp", "dev", 10)
+def test_merge_pending_transfer_origin_redirection_and_expiration_refund():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
 
-    # Non-existent employee returns None
-    assert hr.calc_salary("Ghost", 0, 100) is None
-    assert hr.calc_salary("unknown_id", 10, 20) is None
+    bank.deposit(4, "B", 1000)
 
-    # Employee never worked -> returns 0
-    assert hr.calc_salary("emp", 0, 100) == 0
+    # B transfers 400 to C (B remaining balance = 600)
+    tid = bank.transfer(5, "B", "C", 400)
+    assert tid == "transfer1"
+
+    # Merge B into A -> A receives 600
+    assert bank.merge_accounts(6, "A", "B") is True
+
+    # Transfer expires after 24h
+    expire_time = 5 + 86_400_000 + 1
+    assert bank.accept_transfer(expire_time, "C", "transfer1") is False
+
+    # Expired transfer refund (400) goes to merged account A (A balance: 600 + 400 = 1000)
+    assert bank.pay(expire_time + 1, "A", 1000) == 0
+    assert bank.top_spenders(expire_time + 2, 2) == ["A(1000)", "C(0)"]
+
+
+def test_merge_cancels_transfer_when_origin_and_target_become_equal():
+    # Case 1: Transfer A -> B, then B merges into A (target A, source B)
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.deposit(3, "A", 1000)
+
+    tid1 = bank.transfer(4, "A", "B", 400)  # A balance = 600
+    assert tid1 == "transfer1"
+
+    # B merges into A -> Transfer A -> B becomes A -> A
+    # Must cancel transfer and refund 400 to A (A balance becomes 600 + 400 = 1000)
+    assert bank.merge_accounts(5, "A", "B") is True
+    assert bank.pay(6, "A", 1000) == 0
+    # Transfer is cancelled and cannot be accepted
+    assert bank.accept_transfer(7, "A", "transfer1") is False
+
+    # Case 2: Transfer A -> B, then A merges into B (target B, source A)
+    bank2 = BankingSystem()
+    bank2.create_account(1, "A")
+    bank2.create_account(2, "B")
+    bank2.deposit(3, "A", 1000)
+
+    tid2 = bank2.transfer(4, "A", "B", 400)  # A balance = 600
+    assert tid2 == "transfer1"
+
+    # A merges into B -> Transfer A -> B becomes B -> B
+    # Must cancel transfer and refund 400 to resulting account B (B balance = 600 + 400 = 1000)
+    assert bank2.merge_accounts(5, "B", "A") is True
+    assert bank2.pay(6, "B", 1000) == 0
+    assert bank2.accept_transfer(7, "B", "transfer1") is False
+
+
+def test_merge_chained_and_multi_account_transfers():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
+    bank.create_account(4, "D")
+
+    bank.deposit(5, "B", 500)
+
+    # B transfers 300 to C (B balance = 200)
+    tid = bank.transfer(6, "B", "C", 300)
+    assert tid == "transfer1"
+
+    # Chain merge: B into A (transfer becomes A -> C)
+    assert bank.merge_accounts(7, "A", "B") is True
+
+    # Chain merge: C into D (transfer becomes A -> D)
+    assert bank.merge_accounts(8, "D", "C") is True
+
+    # D accepts transfer from A
+    assert bank.accept_transfer(9, "D", "transfer1") is True
+
+    # D gets 300, A outgoing is 300, A balance is 200
+    assert bank.pay(10, "D", 300) == 0
+    assert bank.pay(11, "A", 200) == 0
+    assert bank.top_spenders(12, 5) == [
+        "A(500)",
+        "D(300)",
+    ]

@@ -1,24 +1,35 @@
 ---
 
-## Level 3 - Promoções
+## Level 3 - Transferências pendentes
 
 ### Assinaturas adicionadas
 ```python
-class EmployeeSystem:
-    def promote(
-        self,
-        employee_id: str,
-        new_position: str,
-        new_compensation: int,
-        start_timestamp: int
-    ) -> bool:
+class BankingSystem:
+    def transfer(self, timestamp: int, source: str, target: str, amount: int) -> str | None:
+        ...
+
+    def accept_transfer(self, timestamp: int, account_id: str, transfer_id: str) -> bool:
         ...
 ```
 
 ### Requisitos
 
-Uma promoção fica **pendente**:
-- Ela entra em vigor no primeiro `register()` realizado em ou depois de `start_timestamp`, desde que o funcionário esteja fora do escritório antes desse registro.
-- Apenas uma promoção pode estar pendente por funcionário.
-- Retorna `False` se o funcionário não existir ou já tiver uma promoção pendente; caso contrário `True`.
-- Horas anteriores continuam pertencendo à posição anterior; `top_n_employees()` considera somente a posição atual.
+Uma transferência:
+- Retira imediatamente o dinheiro da conta de origem (`source`);
+- Fica pendente por **24 horas** (`86_400_000` unidades de timestamp);
+- Somente `target` pode aceitar (`account_id` deve ser igual a `target`).
+
+IDs gerados:
+```text
+transfer1
+transfer2
+transfer3
+...
+```
+IDs são incrementados sequencialmente somente quando uma transferência é criada com sucesso.
+
+Se expirar (`timestamp > transfer_timestamp + 86_400_000`):
+- O dinheiro retorna automaticamente para `source`;
+- A transferência não pode mais ser aceita.
+
+Transferências só contam como `outgoing` da conta de origem depois de aceitas.

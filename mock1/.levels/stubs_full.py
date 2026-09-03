@@ -1,34 +1,28 @@
-class FileStorage:
+class InMemoryDB:
     def __init__(self):
         pass
 
     # Level 1
-    def add_file(self, name: str, size: int) -> bool:
-        raise NotImplementedError("Level 1: add_file não implementado")
+    def set(self, timestamp: int, key: str, field: str, value: int) -> None:
+        raise NotImplementedError("Level 1: set não implementado")
 
-    def get_file_size(self, name: str) -> int | None:
-        raise NotImplementedError("Level 1: get_file_size não implementado")
+    def get(self, timestamp: int, key: str, field: str) -> int | None:
+        raise NotImplementedError("Level 1: get não implementado")
 
-    def copy_file(self, source: str, destination: str) -> bool:
-        raise NotImplementedError("Level 1: copy_file não implementado")
+    def delete(self, timestamp: int, key: str, field: str) -> bool:
+        raise NotImplementedError("Level 1: delete não implementado")
 
     # Level 2
-    def find_files(self, prefix: str, suffix: str) -> list[str]:
-        raise NotImplementedError("Level 2: find_files não implementado")
+    def scan(self, timestamp: int, key: str) -> list[str]:
+        raise NotImplementedError("Level 2: scan não implementado")
+
+    def scan_by_prefix(self, timestamp: int, key: str, prefix: str) -> list[str]:
+        raise NotImplementedError("Level 2: scan_by_prefix não implementado")
 
     # Level 3
-    def add_user(self, user_id: str, capacity: int) -> bool:
-        raise NotImplementedError("Level 3: add_user não implementado")
-
-    def add_file_by(self, user_id: str, name: str, size: int) -> int | None:
-        raise NotImplementedError("Level 3: add_file_by não implementado")
-
-    def update_capacity(self, user_id: str, capacity: int) -> int | None:
-        raise NotImplementedError("Level 3: update_capacity não implementado")
+    def set_with_ttl(self, timestamp: int, key: str, field: str, value: int, ttl: int) -> None:
+        raise NotImplementedError("Level 3: set_with_ttl não implementado")
 
     # Level 4
-    def compress_file(self, user_id: str, name: str) -> int | None:
-        raise NotImplementedError("Level 4: compress_file não implementado")
-
-    def decompress_file(self, user_id: str, name: str) -> int | None:
-        raise NotImplementedError("Level 4: decompress_file não implementado")
+    def get_at(self, timestamp: int, key: str, field: str, at_timestamp: int) -> int | None:
+        raise NotImplementedError("Level 4: get_at não implementado")

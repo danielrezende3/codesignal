@@ -1,33 +1,31 @@
-## Level 1 - Funcionários e horas
+## Level 1 - Contas
 
 ### Assinaturas
 ```python
-class EmployeeSystem:
-    def add_employee(self, employee_id: str, position: str, compensation: int) -> bool:
+class BankingSystem:
+    def create_account(self, timestamp: int, account_id: str) -> bool:
         ...
 
-    def register(self, employee_id: str, timestamp: int) -> str:
+    def deposit(self, timestamp: int, account_id: str, amount: int) -> int | None:
         ...
 
-    def get_worked_time(self, employee_id: str) -> int | None:
+    def pay(self, timestamp: int, account_id: str, amount: int) -> int | None:
         ...
 ```
 
 ### Requisitos
 
-`add_employee(employee_id, position, compensation)`:
-- Adiciona um funcionário com sua posição e compensação por unidade de tempo.
-- Retorna `False` se o funcionário já existir; caso contrário `True`.
+`create_account(timestamp, account_id)`:
+- Cria conta com saldo `0`.
+- Não permite ID duplicado (retorna `False` se já existir; caso contrário `True`).
 
-`register(employee_id, timestamp)` alterna o estado de presença do funcionário:
-```text
-fora -> entrou
-dentro -> saiu
-```
-- Retorne `"registered"` se a operação funcionar.
-- Retorne `""` se o funcionário não existir.
-- Períodos ainda não finalizados (atualmente dentro) não contam para o tempo trabalhado.
+`deposit(timestamp, account_id, amount)`:
+- Adiciona `amount` ao saldo da conta.
+- Retorna o novo saldo.
+- Retorna `None` se a conta não existir.
 
-`get_worked_time(employee_id)`:
-- Retorna o tempo total trabalhado (soma de todos os intervalos `saiu - entrou`).
-- Se o funcionário não existir, retorna `None`.
+`pay(timestamp, account_id, amount)`:
+- Retira dinheiro da conta.
+- Saldo nunca pode ficar negativo.
+- Retorna o novo saldo em caso de sucesso.
+- Retorna `None` se a conta não existir ou se não houver saldo suficiente.

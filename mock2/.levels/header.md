@@ -1,5 +1,3 @@
-# Mock 2 - Banking System
+# Mock 2 - File Storage
 
-Implemente um banco em memória.
-
-Todos os métodos recebem `timestamp`, e as chamadas serão fornecidas em **ordem estritamente crescente de timestamp**.
+Implemente `FileStorage`, um sistema de armazenamento de arquivos em memória.

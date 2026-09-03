@@ -1,30 +1,23 @@
 ---
 
-## Level 2 - Scan
+## Level 2 - Ranking
 
 ### Assinaturas adicionadas
 ```python
-class InMemoryDB:
-    def scan(self, timestamp: int, key: str) -> list[str]:
-        ...
-
-    def scan_by_prefix(self, timestamp: int, key: str, prefix: str) -> list[str]:
+class EmployeeSystem:
+    def top_n_employees(self, n: int, position: str) -> list[str]:
         ...
 ```
 
 ### Requisitos
 
-`scan(timestamp, key)`:
-- Retorna todos os campos do registro `key`.
-
-`scan_by_prefix(timestamp, key, prefix)`:
-- Retorna todos os campos do registro `key` cujo nome comece com `prefix`.
+Retorne os `n` funcionários com maior tempo trabalhado cuja **posição atual** seja `position`.
 
 Formato de retorno:
 ```text
-"<field>(<value>)"
+"<employee_id>(<worked_time>)"
 ```
 
 Ordenação:
-- Sempre ordene os resultados lexicograficamente por `field`.
-- Se o registro não existir ou não contiver campos correspondentes, retorne lista vazia `[]`.
+1. Tempo trabalhado decrescente;
+2. `employee_id` lexicograficamente crescente.

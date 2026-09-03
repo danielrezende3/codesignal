@@ -1,3 +1,3 @@
-class FileStorage:
+class InMemoryDB:
     def __init__(self):
         pass

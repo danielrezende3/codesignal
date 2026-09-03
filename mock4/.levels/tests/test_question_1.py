@@ -1,108 +1,100 @@
-from mock4.solution import EmployeeSystem
+from mock4.solution import BankingSystem
 
 
-def test_add_employee_success_and_duplicates():
-    hr = EmployeeSystem()
-    assert hr.add_employee("A", "developer", 100) is True
-    assert hr.add_employee("B", "manager", 200) is True
+def test_account_creation_basic_and_duplicate_prevention():
+    bank = BankingSystem()
+    # Create valid accounts
+    assert bank.create_account(1, "A") is True
+    assert bank.create_account(2, "B") is True
+    assert bank.create_account(3, "user_123") is True
 
-    # Duplicate employee_id must return False
-    assert hr.add_employee("A", "developer", 100) is False
-    assert hr.add_employee("A", "lead", 300) is False
-
-    # Check that A still exists and operates under initial state
-    assert hr.get_worked_time("A") == 0
-
-
-def test_register_toggle_single_shift():
-    hr = EmployeeSystem()
-    assert hr.add_employee("A", "developer", 100) is True
-
-    # Initial state: 0 hours worked
-    assert hr.get_worked_time("A") == 0
-
-    # Clock in: outside -> inside
-    assert hr.register("A", 10) == "registered"
-    # Unfinished shift must NOT count towards worked_time
-    assert hr.get_worked_time("A") == 0
-
-    # Clock out: inside -> outside
-    assert hr.register("A", 50) == "registered"
-    # Shift finished: 50 - 10 = 40
-    assert hr.get_worked_time("A") == 40
+    # Duplicate account creation must return False
+    assert bank.create_account(4, "A") is False
+    assert bank.create_account(5, "B") is False
+    assert bank.create_account(6, "user_123") is False
 
 
-def test_register_multiple_shifts_and_toggle_sequence():
-    hr = EmployeeSystem()
-    hr.add_employee("emp1", "qa", 50)
+def test_duplicate_creation_does_not_reset_account_state():
+    bank = BankingSystem()
+    assert bank.create_account(1, "A") is True
+    assert bank.deposit(2, "A", 1000) == 1000
 
-    # Shift 1: [10, 20] -> +10 (Total = 10)
-    assert hr.register("emp1", 10) == "registered"
-    assert hr.register("emp1", 20) == "registered"
-    assert hr.get_worked_time("emp1") == 10
-
-    # Shift 2: [30, 50] -> +20 (Total = 30)
-    assert hr.register("emp1", 30) == "registered"
-    assert hr.get_worked_time("emp1") == 10  # Open shift not counted
-    assert hr.register("emp1", 50) == "registered"
-    assert hr.get_worked_time("emp1") == 30
-
-    # Shift 3: [100, 150] -> +50 (Total = 80)
-    assert hr.register("emp1", 100) == "registered"
-    assert hr.get_worked_time("emp1") == 30  # Open shift not counted
-    assert hr.register("emp1", 150) == "registered"
-    assert hr.get_worked_time("emp1") == 80
+    # Attempting to re-create account A should return False and keep existing balance intact
+    assert bank.create_account(3, "A") is False
+    assert bank.deposit(4, "A", 500) == 1500
+    assert bank.pay(5, "A", 1500) == 0
 
 
-def test_get_worked_time_nonexistent_and_zero_shifts():
-    hr = EmployeeSystem()
-    hr.add_employee("emp1", "qa", 50)
+def test_deposit_operations_and_non_existent_accounts():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
 
-    # Non-existent employee returns None
-    assert hr.get_worked_time("missing_emp") is None
-    assert hr.get_worked_time("Ghost") is None
+    # Initial balance is 0, deposit updates and returns new balance
+    assert bank.deposit(2, "A", 100) == 100
+    assert bank.deposit(3, "A", 250) == 350
+    assert bank.deposit(4, "A", 650) == 1000
 
-    # Employee added but never registered has worked_time 0
-    assert hr.get_worked_time("emp1") == 0
-
-
-def test_zero_duration_shift():
-    hr = EmployeeSystem()
-    hr.add_employee("emp_instant", "dev", 100)
-
-    # Enters and exits at the exact same timestamp
-    assert hr.register("emp_instant", 10) == "registered"
-    assert hr.register("emp_instant", 10) == "registered"
-    assert hr.get_worked_time("emp_instant") == 0
+    # Deposit to non-existent account returns None and does not create the account
+    assert bank.deposit(5, "non_existent", 500) is None
+    assert bank.deposit(6, "Missing", 100) is None
+    assert bank.pay(7, "non_existent", 50) is None
 
 
-def test_multiple_independent_employees_interleaved():
-    hr = EmployeeSystem()
-    hr.add_employee("alice", "dev", 100)
-    hr.add_employee("bob", "qa", 80)
+def test_pay_operations_insufficient_balance_and_exact_zero():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.deposit(2, "A", 1000)
 
-    # Alice enters at 10
-    assert hr.register("alice", 10) == "registered"
-    # Bob enters at 15
-    assert hr.register("bob", 15) == "registered"
-    # Alice exits at 30 (Alice: 20 hrs)
-    assert hr.register("alice", 30) == "registered"
-    # Bob exits at 45 (Bob: 30 hrs)
-    assert hr.register("bob", 45) == "registered"
+    # Partial payment
+    assert bank.pay(3, "A", 300) == 700
 
-    assert hr.get_worked_time("alice") == 20
-    assert hr.get_worked_time("bob") == 30
+    # Insufficient balance returns None and preserves balance
+    assert bank.pay(4, "A", 800) is None
+    assert bank.pay(5, "A", 701) is None
+
+    # Pay exact balance succeeds and leaves exactly 0
+    assert bank.pay(6, "A", 700) == 0
+
+    # Pay on 0 balance returns None
+    assert bank.pay(7, "A", 1) is None
+    assert bank.pay(8, "A", 100) is None
+
+    # Pay on non-existent account returns None
+    assert bank.pay(9, "Ghost", 50) is None
 
 
-def test_consecutive_back_to_back_shifts():
-    hr = EmployeeSystem()
-    hr.add_employee("emp", "dev", 100)
+def test_chronological_interleaved_deposits_and_payments():
+    bank = BankingSystem()
+    bank.create_account(1, "acc1")
+    bank.create_account(2, "acc2")
 
-    # Shift 1: [10, 40]
-    assert hr.register("emp", 10) == "registered"
-    assert hr.register("emp", 40) == "registered"
-    # Shift 2: [40, 80] immediately after
-    assert hr.register("emp", 40) == "registered"
-    assert hr.register("emp", 80) == "registered"
+    # Operations on acc1
+    assert bank.deposit(3, "acc1", 500) == 500
+    assert bank.pay(4, "acc1", 200) == 300
+    assert bank.deposit(5, "acc1", 700) == 1000
+    assert bank.pay(6, "acc1", 1000) == 0
 
-    assert hr.get_worked_time("emp") == 70
+    # Operations on acc2
+    assert bank.pay(7, "acc2", 100) is None
+    assert bank.deposit(8, "acc2", 300) == 300
+    assert bank.deposit(9, "acc2", 200) == 500
+    assert bank.pay(10, "acc2", 400) == 100
+
+    # Verify acc1 still 0 and acc2 still 100
+    assert bank.pay(11, "acc1", 1) is None
+    assert bank.pay(12, "acc2", 100) == 0
+
+
+def test_account_isolation():
+    bank = BankingSystem()
+    bank.create_account(1, "alice")
+    bank.create_account(2, "bob")
+
+    assert bank.deposit(3, "alice", 1000) == 1000
+    # bob balance is still 0
+    assert bank.pay(4, "bob", 100) is None
+    assert bank.pay(5, "alice", 400) == 600
+
+    assert bank.deposit(6, "bob", 500) == 500
+    assert bank.pay(7, "alice", 600) == 0
+    assert bank.pay(8, "bob", 500) == 0

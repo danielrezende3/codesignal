@@ -1,3 +1,3 @@
-class InMemoryDB:
+class EmployeeSystem:
     def __init__(self):
         pass

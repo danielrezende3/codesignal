@@ -4,20 +4,20 @@
 
 ### Assinaturas adicionadas
 ```python
-class EmployeeSystem:
-    def top_n_employees(self, n: int, position: str) -> list[str]:
+class BankingSystem:
+    def top_spenders(self, timestamp: int, n: int) -> list[str]:
         ...
 ```
 
 ### Requisitos
 
-Retorne os `n` funcionários com maior tempo trabalhado cuja **posição atual** seja `position`.
+Defina `outgoing` como todo dinheiro que efetivamente saiu de uma conta por `pay`.
 
-Formato de retorno:
+Retorne os `n` maiores pagadores no formato:
 ```text
-"<employee_id>(<worked_time>)"
+"<account_id>(<outgoing>)"
 ```
 
 Ordenação:
-1. Tempo trabalhado decrescente;
-2. `employee_id` lexicograficamente crescente.
+1. `outgoing` decrescente;
+2. `account_id` lexicograficamente crescente.

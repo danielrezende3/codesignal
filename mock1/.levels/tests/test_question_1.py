@@ -1,46 +1,40 @@
-from mock1.solution import FileStorage
+from mock1.solution import InMemoryDB
 
 
-def test_add_and_get_file_size():
-    fs = FileStorage()
-    assert fs.add_file("/a.txt", 100) is True
-    assert fs.add_file("/a.txt", 200) is False  # Duplicate name
-    assert fs.get_file_size("/a.txt") == 100
-    assert fs.get_file_size("/missing.txt") is None
+def test_set_get_and_delete_basic():
+    db = InMemoryDB()
+    db.set(1, "user1", "age", 26)
+    db.set(2, "user1", "score", 100)
+
+    assert db.get(3, "user1", "age") == 26
+    assert db.get(4, "user1", "score") == 100
+    assert db.get(5, "user1", "missing_field") is None
+    assert db.get(6, "missing_user", "age") is None
+
+    assert db.delete(7, "user1", "age") is True
+    assert db.get(8, "user1", "age") is None
+    assert db.delete(9, "user1", "age") is False
 
 
-def test_add_file_with_zero_size():
-    fs = FileStorage()
-    assert fs.add_file("/empty.txt", 0) is True
-    assert fs.get_file_size("/empty.txt") == 0
-    assert fs.add_file("/empty.txt", 0) is False
+def test_overwrite_field_and_values():
+    db = InMemoryDB()
+    db.set(1, "A", "val", 10)
+    assert db.get(2, "A", "val") == 10
+    db.set(3, "A", "val", 20)
+    assert db.get(4, "A", "val") == 20
+    db.set(
+        5, "A", "val", 0
+    )  # Value 0 should be stored and returned as 0, not treated as None/falsy
+    assert db.get(6, "A", "val") == 0
 
 
-def test_copy_file_basic():
-    fs = FileStorage()
-    assert fs.add_file("/a.txt", 100) is True
-    assert fs.copy_file("/a.txt", "/b.txt") is True
-    assert fs.get_file_size("/b.txt") == 100
-    assert fs.copy_file("/missing", "/c.txt") is False
-    assert fs.copy_file("/a.txt", "/b.txt") is False  # Destination already exists
+def test_multiple_keys_isolation():
+    db = InMemoryDB()
+    db.set(1, "user1", "email", 1)
+    db.set(2, "user2", "email", 2)
+    assert db.get(3, "user1", "email") == 1
+    assert db.get(4, "user2", "email") == 2
 
-
-def test_copy_file_to_self():
-    fs = FileStorage()
-    fs.add_file("/a.txt", 100)
-    # Copying a file to its own name should fail because destination already exists
-    assert fs.copy_file("/a.txt", "/a.txt") is False
-    assert fs.get_file_size("/a.txt") == 100
-
-
-def test_multiple_files_and_copies_independence():
-    fs = FileStorage()
-    assert fs.add_file("/dir/file1.txt", 50) is True
-    assert fs.add_file("/dir/file2.txt", 150) is True
-    assert fs.copy_file("/dir/file1.txt", "/dir/file3.txt") is True
-    assert fs.get_file_size("/dir/file3.txt") == 50
-    assert fs.get_file_size("/dir/file1.txt") == 50
-    assert fs.get_file_size("/dir/file2.txt") == 150
-    # Copying a copied file
-    assert fs.copy_file("/dir/file3.txt", "/dir/file4.txt") is True
-    assert fs.get_file_size("/dir/file4.txt") == 50
+    assert db.delete(5, "user1", "email") is True
+    assert db.get(6, "user1", "email") is None
+    assert db.get(7, "user2", "email") == 2  # user2 untouched

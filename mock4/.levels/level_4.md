@@ -1,28 +1,25 @@
 ---
 
-## Level 4 - Salário por período
+## Level 4 - Merge de contas
 
 ### Assinaturas adicionadas
 ```python
-class EmployeeSystem:
-    def calc_salary(
-        self,
-        employee_id: str,
-        start_timestamp: int,
-        end_timestamp: int
-    ) -> int | None:
+class BankingSystem:
+    def merge_accounts(self, timestamp: int, target: str, source: str) -> bool:
         ...
 ```
 
 ### Requisitos
 
-Calcula a remuneração devida ao funcionário no intervalo:
-```text
-[start_timestamp, end_timestamp)
-```
+Faça o merge de `source` em `target`.
 
 Regras:
-- `compensation` representa pagamento **por unidade de tempo trabalhada**.
-- Calcule somente a interseção dos períodos efetivamente trabalhados com `[start_timestamp, end_timestamp)`.
-- Considere a remuneração vigente em cada período de trabalho.
-- Retorne `None` se o funcionário não existir.
+- Ambas as contas precisam existir;
+- Não podem ser a mesma conta;
+- O saldo de `source` é adicionado a `target`;
+- O `outgoing` de ambas é somado em `target`;
+- `source` deixa de existir.
+
+Transferências pendentes envolvendo `source` devem passar a referenciar `target`.
+
+Se isso fizer origem e destino da transferência se tornarem iguais, cancele a transferência e devolva o valor à conta resultante (`target`).

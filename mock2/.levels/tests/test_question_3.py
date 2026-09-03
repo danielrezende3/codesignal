@@ -1,168 +1,90 @@
-from mock2.solution import BankingSystem
+from mock2.solution import FileStorage
 
 
-def test_transfers_basic_and_immediate_withdrawal():
-    bank = BankingSystem()
-    bank.create_account(1, "A")
-    bank.create_account(2, "B")
-    bank.deposit(3, "A", 1000)
+def test_users_and_quotas_basic():
+    fs = FileStorage()
+    assert fs.add_user("daniel", 1000) is True
+    assert fs.add_user("daniel", 500) is False
 
-    # Immediate balance deduction from source
-    tid = bank.transfer(4, "A", "B", 400)
-    assert tid == "transfer1"
+    assert fs.add_file_by("daniel", "/a", 400) == 600
+    assert fs.add_file_by("daniel", "/b", 300) == 300
+    # Ultrapassa capacidade (300 restante < 400)
+    assert fs.add_file_by("daniel", "/c", 400) is None
 
-    # A has 600 remaining; cannot pay 700, but can pay 600
-    assert bank.pay(5, "A", 700) is None
+    # Redução de capacidade: 500 total, arquivos atuais somam 700 (/a: 400, /b: 300).
+    # Deve remover o maior (/a de 400). Sobra /b (300 <= 500). Removeu 1 arquivo.
+    assert fs.update_capacity("daniel", 500) == 1
 
-    # Target B balance is NOT yet updated while transfer is pending
-    assert bank.pay(6, "B", 100) is None
-
-    # Source A outgoing is NOT counted yet while pending
-    assert bank.top_spenders(7, 2) == ["A(0)", "B(0)"]
-
-    # Target B accepts transfer
-    assert bank.accept_transfer(8, "B", "transfer1") is True
-
-    # Post-acceptance verification
-    assert bank.pay(9, "B", 400) == 0
-    assert bank.pay(10, "A", 600) == 0
-    assert bank.top_spenders(11, 2) == ["A(1000)", "B(400)"]
+    assert fs.get_file_size("/a") is None
+    assert fs.get_file_size("/b") == 300
 
 
-def test_transfer_id_sequencing_only_on_success():
-    bank = BankingSystem()
-    bank.create_account(1, "A")
-    bank.create_account(2, "B")
-    bank.deposit(3, "A", 500)
+def test_add_file_by_nonexistent_user_and_duplicate_filename():
+    fs = FileStorage()
+    fs.add_user("u1", 500)
+    fs.add_file_by("u1", "/f1", 100)
 
-    # Failed transfers (insufficient funds, non-existent accounts, self-transfer)
-    assert bank.transfer(4, "A", "B", 1000) is None  # Insufficient funds
-    assert bank.transfer(5, "A", "Missing", 100) is None  # Target doesn't exist
-    assert bank.transfer(6, "Missing", "B", 100) is None  # Source doesn't exist
-    assert bank.transfer(7, "A", "A", 100) is None  # Self-transfer
+    # Usuário inexistente
+    assert fs.add_file_by("ghost", "/ghost.txt", 100) is None
+    assert fs.update_capacity("ghost", 500) is None
 
-    # First successful transfer must be "transfer1"
-    tid1 = bank.transfer(8, "A", "B", 200)
-    assert tid1 == "transfer1"
-
-    # Another failed transfer must NOT advance the counter
-    assert bank.transfer(9, "A", "B", 500) is None
-
-    # Next successful transfer must be "transfer2"
-    tid2 = bank.transfer(10, "A", "B", 100)
-    assert tid2 == "transfer2"
-
-    # Next successful transfer must be "transfer3"
-    tid3 = bank.transfer(11, "A", "B", 200)
-    assert tid3 == "transfer3"
+    # Arquivo com nome já existente não pode ser adicionado
+    assert fs.add_file_by("u1", "/f1", 50) is None
+    # Quota não deve ter sido consumida
+    assert fs.add_file_by("u1", "/f2", 400) == 0
 
 
-def test_transfer_24h_exact_boundary_and_expiration():
-    bank = BankingSystem()
-    bank.create_account(1, "A")
-    bank.create_account(2, "B")
-    bank.create_account(3, "C")
-    bank.deposit(4, "A", 2000)
-
-    # Transfer 1 at t = 1000. 24h boundary is 1000 + 86_400_000 = 86401000
-    tid1 = bank.transfer(1000, "A", "B", 500)
-    assert tid1 == "transfer1"
-
-    # Transfer 2 at t = 2000. 24h boundary + 1 ms is 2000 + 86_400_000 + 1 = 86402001
-    tid2 = bank.transfer(2000, "A", "C", 700)
-    assert tid2 == "transfer2"
-
-    # A remaining balance = 2000 - 500 - 700 = 800
-
-    # Acceptance at exact boundary (inclusive) must SUCCEED
-    assert bank.accept_transfer(86401000, "B", "transfer1") is True
-    assert bank.pay(86401001, "B", 500) == 0
-
-    # Acceptance 1 unit past 24h boundary must FAIL (expired)
-    assert bank.accept_transfer(86402001, "C", "transfer2") is False
-
-    # Money from expired transfer2 (700) must be refunded to A
-    # A balance: 800 + 700 = 1500
-    assert bank.pay(86402002, "A", 1500) == 0
-
-    # Attempting to accept an already expired transfer again must return False
-    # and must NOT double refund to A
-    assert bank.accept_transfer(86402003, "C", "transfer2") is False
-    assert bank.pay(86402004, "A", 1) is None
+def test_admin_files_do_not_consume_user_quota():
+    fs = FileStorage()
+    assert fs.add_user("u1", 200) is True
+    # Arquivo de admin (add_file)
+    assert fs.add_file("/admin_file", 1000) is True
+    # u1 ainda tem seus 200 inteiros
+    assert fs.add_file_by("u1", "/u1_file", 200) == 0
 
 
-def test_transfer_unauthorized_acceptance_and_double_acceptance():
-    bank = BankingSystem()
-    bank.create_account(1, "A")
-    bank.create_account(2, "B")
-    bank.create_account(3, "C")
-    bank.deposit(4, "A", 1000)
+def test_copy_file_preserves_owner_and_checks_quota():
+    fs = FileStorage()
+    fs.add_user("u1", 300)
+    assert fs.add_file_by("u1", "/file1", 200) == 100
 
-    tid = bank.transfer(5, "A", "B", 400)
-    assert tid == "transfer1"
+    # Cópia para /file2 precisa de mais 200, mas u1 só tem 100 restante -> deve falhar
+    assert fs.copy_file("/file1", "/file2") is False
+    assert fs.get_file_size("/file2") is None
 
-    # Unauthorized accounts cannot accept (returns False, transfer remains pending)
-    assert bank.accept_transfer(6, "C", "transfer1") is False
-    assert bank.accept_transfer(7, "A", "transfer1") is False
-    assert bank.accept_transfer(8, "Missing", "transfer1") is False
-
-    # Legitimate target B accepts
-    assert bank.accept_transfer(9, "B", "transfer1") is True
-
-    # Cannot accept an already accepted transfer
-    assert bank.accept_transfer(10, "B", "transfer1") is False
-    assert bank.accept_transfer(11, "C", "transfer1") is False
-    assert bank.accept_transfer(12, "A", "transfer1") is False
+    # Se aumentar a capacidade, agora a cópia deve funcionar
+    assert fs.update_capacity("u1", 500) == 0
+    assert fs.copy_file("/file1", "/file2") is True
+    assert fs.get_file_size("/file2") == 200
 
 
-def test_transfer_invalid_transfer_id():
-    bank = BankingSystem()
-    bank.create_account(1, "A")
-    bank.create_account(2, "B")
+def test_update_capacity_tie_breaker_complex():
+    fs = FileStorage()
+    fs.add_user("u1", 1000)
+    fs.add_file_by("u1", "/z_large", 400)
+    fs.add_file_by("u1", "/c_mid", 200)
+    fs.add_file_by("u1", "/a_mid", 200)
+    fs.add_file_by("u1", "/b_mid", 200)
 
-    assert bank.accept_transfer(3, "B", "transfer1") is False
-    assert bank.accept_transfer(4, "B", "transfer999") is False
-    assert bank.accept_transfer(5, "B", "invalid") is False
+    # Total = 1000. Reduz para 350.
+    # 1º a remover: maior tamanho -> /z_large (400). Sobram /a_mid (200), /b_mid (200), /c_mid (200) = 600.
+    # Ainda 600 > 350.
+    # 2º a remover (empate de 200): menor nome lexicográfico -> /a_mid. Sobram /b_mid, /c_mid = 400.
+    # Ainda 400 > 350.
+    # 3º a remover (empate de 200): menor nome lexicográfico -> /b_mid. Sobra /c_mid = 200 (<= 350).
+    # Total removidos = 3.
+    assert fs.update_capacity("u1", 350) == 3
+    assert fs.get_file_size("/z_large") is None
+    assert fs.get_file_size("/a_mid") is None
+    assert fs.get_file_size("/b_mid") is None
+    assert fs.get_file_size("/c_mid") == 200
 
 
-def test_multiple_concurrent_transfers_and_lifecycle():
-    bank = BankingSystem()
-    bank.create_account(1, "A")
-    bank.create_account(2, "B")
-    bank.create_account(3, "C")
-    bank.deposit(4, "A", 1000)
-
-    # A creates 2 pending transfers
-    tid1 = bank.transfer(100, "A", "B", 300)  # A has 700
-    tid2 = bank.transfer(200, "A", "C", 400)  # A has 300
-    assert tid1 == "transfer1"
-    assert tid2 == "transfer2"
-
-    # A cannot transfer 400 (only 300 available)
-    assert bank.transfer(300, "A", "B", 400) is None
-
-    # A transfers remaining 300
-    tid3 = bank.transfer(400, "A", "B", 300)  # A has 0
-    assert tid3 == "transfer3"
-
-    # B accepts transfer1 at t=500
-    assert bank.accept_transfer(500, "B", "transfer1") is True
-
-    # transfer2 expires (200 + 86_400_000 + 10)
-    expire_time = 200 + 86_400_000 + 10
-    assert bank.accept_transfer(expire_time, "C", "transfer2") is False
-
-    # B accepts transfer3 within valid window
-    assert bank.accept_transfer(expire_time + 1, "B", "transfer3") is True
-
-    # A has 400 refunded from transfer2, B has 300+300=600, C has 0
-    # A's outgoing is 300 + 300 = 600 (transfer1 + transfer3)
-    # A pays 400 -> A outgoing = 1000
-    # B pays 600 -> B outgoing = 600
-    assert bank.pay(expire_time + 2, "A", 400) == 0
-    assert bank.pay(expire_time + 3, "B", 600) == 0
-    assert bank.top_spenders(expire_time + 4, 3) == [
-        "A(1000)",
-        "B(600)",
-        "C(0)",
-    ]
+def test_update_capacity_no_removal_needed():
+    fs = FileStorage()
+    fs.add_user("u1", 500)
+    fs.add_file_by("u1", "/a", 100)
+    # Aumentar ou manter capacidade retorna 0
+    assert fs.update_capacity("u1", 600) == 0
+    assert fs.update_capacity("u1", 200) == 0
+    assert fs.get_file_size("/a") == 100

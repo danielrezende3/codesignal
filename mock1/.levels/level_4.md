@@ -1,31 +1,22 @@
 ---
 
-## Level 4 - Compressão
+## Level 4 - Consultas históricas
 
 ### Assinaturas adicionadas
 ```python
-class FileStorage:
-    def compress_file(self, user_id: str, name: str) -> int | None:
-        ...
-
-    def decompress_file(self, user_id: str, name: str) -> int | None:
+class InMemoryDB:
+    def get_at(self, timestamp: int, key: str, field: str, at_timestamp: int) -> int | None:
         ...
 ```
 
 ### Requisitos
 
-`compress_file(user_id, name)`:
-- Arquivo precisa existir;
-- Precisa pertencer ao usuário;
-- Arquivo não pode já terminar em `.COMPRESSED`;
-- Novo tamanho é `size // 2`;
-- Arquivo passa de `name` para `name.COMPRESSED`;
-- Retorna a capacidade restante (ou `None` se falhar).
+> Qual era o valor desse campo em `at_timestamp`?
 
-`decompress_file(user_id, name)` realiza o inverso:
-- Nome precisa terminar em `.COMPRESSED`;
-- Tamanho dobra;
-- Remove `.COMPRESSED`;
-- Não pode ultrapassar quota;
-- Nome original não pode estar ocupado;
-- Retorna a capacidade restante (ou `None` se falhar).
+Considere:
+- Criação e modificações anteriores a `at_timestamp`;
+- Sobrescrita;
+- Delete;
+- TTL;
+- Recriação posterior.
+- Retorne `None` se o campo não existia ou estava expirado/removido naquele momento histórico.

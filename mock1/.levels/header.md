@@ -1,3 +1,1 @@
-# Mock 1 - File Storage
-
-Implemente `FileStorage`, um sistema de armazenamento de arquivos em memória.
+# Mock 1 - In-Memory Database

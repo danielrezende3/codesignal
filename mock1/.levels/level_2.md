@@ -1,23 +1,30 @@
 ---
 
-## Level 2 - Busca e ordenação
+## Level 2 - Scan
 
 ### Assinaturas adicionadas
 ```python
-class FileStorage:
-    def find_files(self, prefix: str, suffix: str) -> list[str]:
+class InMemoryDB:
+    def scan(self, timestamp: int, key: str) -> list[str]:
+        ...
+
+    def scan_by_prefix(self, timestamp: int, key: str, prefix: str) -> list[str]:
         ...
 ```
 
 ### Requisitos
 
-Encontre arquivos cujo nome começa com `prefix` **e** termina com `suffix`.
+`scan(timestamp, key)`:
+- Retorna todos os campos do registro `key`.
 
-Retorne no formato:
+`scan_by_prefix(timestamp, key, prefix)`:
+- Retorna todos os campos do registro `key` cujo nome comece com `prefix`.
+
+Formato de retorno:
 ```text
-"<name>(<size>)"
+"<field>(<value>)"
 ```
 
 Ordenação:
-1. Maior tamanho primeiro;
-2. Em caso de empate, nome lexicograficamente crescente.
+- Sempre ordene os resultados lexicograficamente por `field`.
+- Se o registro não existir ou não contiver campos correspondentes, retorne lista vazia `[]`.

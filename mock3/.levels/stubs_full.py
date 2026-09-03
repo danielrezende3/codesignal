@@ -1,28 +1,25 @@
-class InMemoryDB:
+class EmployeeSystem:
     def __init__(self):
         pass
 
     # Level 1
-    def set(self, timestamp: int, key: str, field: str, value: int) -> None:
-        raise NotImplementedError("Level 1: set não implementado")
+    def add_employee(self, employee_id: str, position: str, compensation: int) -> bool:
+        raise NotImplementedError("Level 1: add_employee não implementado")
 
-    def get(self, timestamp: int, key: str, field: str) -> int | None:
-        raise NotImplementedError("Level 1: get não implementado")
+    def register(self, employee_id: str, timestamp: int) -> str:
+        raise NotImplementedError("Level 1: register não implementado")
 
-    def delete(self, timestamp: int, key: str, field: str) -> bool:
-        raise NotImplementedError("Level 1: delete não implementado")
+    def get_worked_time(self, employee_id: str) -> int | None:
+        raise NotImplementedError("Level 1: get_worked_time não implementado")
 
     # Level 2
-    def scan(self, timestamp: int, key: str) -> list[str]:
-        raise NotImplementedError("Level 2: scan não implementado")
-
-    def scan_by_prefix(self, timestamp: int, key: str, prefix: str) -> list[str]:
-        raise NotImplementedError("Level 2: scan_by_prefix não implementado")
+    def top_n_employees(self, n: int, position: str) -> list[str]:
+        raise NotImplementedError("Level 2: top_n_employees não implementado")
 
     # Level 3
-    def set_with_ttl(self, timestamp: int, key: str, field: str, value: int, ttl: int) -> None:
-        raise NotImplementedError("Level 3: set_with_ttl não implementado")
+    def promote(self, employee_id: str, new_position: str, new_compensation: int, start_timestamp: int) -> bool:
+        raise NotImplementedError("Level 3: promote não implementado")
 
     # Level 4
-    def get_at(self, timestamp: int, key: str, field: str, at_timestamp: int) -> int | None:
-        raise NotImplementedError("Level 4: get_at não implementado")
+    def calc_salary(self, employee_id: str, start_timestamp: int, end_timestamp: int) -> int | None:
+        raise NotImplementedError("Level 4: calc_salary não implementado")

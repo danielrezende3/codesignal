@@ -1,35 +1,46 @@
 ---
 
-## Level 3 - Transferências pendentes
+## Level 3 - Usuários e quotas
 
 ### Assinaturas adicionadas
 ```python
-class BankingSystem:
-    def transfer(self, timestamp: int, source: str, target: str, amount: int) -> str | None:
+class FileStorage:
+    def add_user(self, user_id: str, capacity: int) -> bool:
         ...
 
-    def accept_transfer(self, timestamp: int, account_id: str, transfer_id: str) -> bool:
+    def add_file_by(self, user_id: str, name: str, size: int) -> int | None:
+        ...
+
+    def update_capacity(self, user_id: str, capacity: int) -> int | None:
         ...
 ```
 
 ### Requisitos
 
-Uma transferência:
-- Retira imediatamente o dinheiro da conta de origem (`source`);
-- Fica pendente por **24 horas** (`86_400_000` unidades de timestamp);
-- Somente `target` pode aceitar (`account_id` deve ser igual a `target`).
+Cada usuário possui uma capacidade máxima.
 
-IDs gerados:
-```text
-transfer1
-transfer2
-transfer3
-...
-```
-IDs são incrementados sequencialmente somente quando uma transferência é criada com sucesso.
+`add_user(user_id, capacity)`:
+- IDs são únicos;
+- Retorna `False` se já existir; caso contrário `True`.
 
-Se expirar (`timestamp > transfer_timestamp + 86_400_000`):
-- O dinheiro retorna automaticamente para `source`;
-- A transferência não pode mais ser aceita.
+`add_file_by(user_id, name, size)`:
+- Adiciona um arquivo pertencente ao usuário;
+- Não pode ultrapassar sua capacidade;
+- Retorna a capacidade restante;
+- Retorna `None` se falhar.
 
-Transferências só contam como `outgoing` da conta de origem depois de aceitas.
+Arquivos criados por `add_file()` pertencem ao usuário especial `"admin"` e não contam para quotas.
+
+`copy_file()` preserva o proprietário. Uma cópia realizada por usuário deve respeitar a quota do proprietário.
+
+### Redução de capacidade
+
+`update_capacity(user_id, capacity)` altera a capacidade máxima.
+
+Se os arquivos existentes ultrapassarem a nova capacidade, remova arquivos até satisfazê-la.
+
+Remova primeiro:
+1. Arquivo de maior tamanho;
+2. Em caso de empate → nome lexicograficamente menor.
+
+Retorne a quantidade de arquivos removidos (ou `None` se o usuário não existir).

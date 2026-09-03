@@ -1,143 +1,168 @@
-from mock4.solution import EmployeeSystem
+from mock4.solution import BankingSystem
 
 
-def test_promote_basic_lifecycle():
-    hr = EmployeeSystem()
-    hr.add_employee("A", "junior", 100)
+def test_transfers_basic_and_immediate_withdrawal():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.deposit(3, "A", 1000)
 
-    # Promoção agendada para timestamp >= 100
-    assert hr.promote("A", "senior", 200, 100) is True
-    # Não pode ter duas promoções pendentes ao mesmo tempo
-    assert hr.promote("A", "lead", 300, 150) is False
+    # Immediate balance deduction from source
+    tid = bank.transfer(4, "A", "B", 400)
+    assert tid == "transfer1"
 
-    # Turnos antes de 100 (posição continua junior)
-    hr.register("A", 80)
-    hr.register("A", 90)  # +10 junior
-    assert hr.top_n_employees(1, "junior") == ["A(10)"]
-    assert hr.top_n_employees(1, "senior") == []
+    # A has 600 remaining; cannot pay 700, but can pay 600
+    assert bank.pay(5, "A", 700) is None
 
-    # Primeiro registro em ou depois de 100 com funcionário fora do escritório
-    hr.register("A", 110)  # Ativa promoção -> vira senior e entra no escritório
-    hr.register("A", 150)  # Sai -> +40 como senior
+    # Target B balance is NOT yet updated while transfer is pending
+    assert bank.pay(6, "B", 100) is None
 
-    # Agora A é senior; top_n_employees considera apenas a posição atual com total acumulado
-    assert hr.top_n_employees(1, "senior") == ["A(50)"]
-    assert hr.top_n_employees(1, "junior") == []
-    assert hr.get_worked_time("A") == 50
+    # Source A outgoing is NOT counted yet while pending
+    assert bank.top_spenders(7, 2) == ["A(0)", "B(0)"]
 
+    # Target B accepts transfer
+    assert bank.accept_transfer(8, "B", "transfer1") is True
 
-def test_promote_nonexistent_employee():
-    hr = EmployeeSystem()
-    assert hr.promote("missing", "lead", 500, 10) is False
+    # Post-acceptance verification
+    assert bank.pay(9, "B", 400) == 0
+    assert bank.pay(10, "A", 600) == 0
+    assert bank.top_spenders(11, 2) == ["A(1000)", "B(400)"]
 
 
-def test_promote_delayed_activation_when_inside_office_at_promotion_timestamp():
-    """
-    Subtle CodeSignal trap:
-    If employee enters BEFORE start_timestamp and exits AT OR AFTER start_timestamp,
-    the exit does NOT activate the promotion because the employee was inside before registering.
-    The promotion only activates on the FIRST entry from outside at or after start_timestamp.
-    """
-    hr = EmployeeSystem()
-    hr.add_employee("emp1", "junior", 50)
+def test_transfer_id_sequencing_only_on_success():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.deposit(3, "A", 500)
 
-    # Schedule promotion for T=100
-    assert hr.promote("emp1", "senior", 100, 100) is True
+    # Failed transfers (insufficient funds, non-existent accounts, self-transfer)
+    assert bank.transfer(4, "A", "B", 1000) is None  # Insufficient funds
+    assert bank.transfer(5, "A", "Missing", 100) is None  # Target doesn't exist
+    assert bank.transfer(6, "Missing", "B", 100) is None  # Source doesn't exist
+    assert bank.transfer(7, "A", "A", 100) is None  # Self-transfer
 
-    # Clock in at 80 (outside -> inside) before T=100
-    hr.register("emp1", 80)
+    # First successful transfer must be "transfer1"
+    tid1 = bank.transfer(8, "A", "B", 200)
+    assert tid1 == "transfer1"
 
-    # Clock out at 120 (inside -> outside) after T=100.
-    # Was inside before registering -> does NOT activate promotion!
-    hr.register("emp1", 120)
+    # Another failed transfer must NOT advance the counter
+    assert bank.transfer(9, "A", "B", 500) is None
 
-    # Position is STILL junior after exiting at 120
-    assert hr.top_n_employees(1, "junior") == ["emp1(40)"]
-    assert hr.top_n_employees(1, "senior") == []
+    # Next successful transfer must be "transfer2"
+    tid2 = bank.transfer(10, "A", "B", 100)
+    assert tid2 == "transfer2"
 
-    # Promotion is STILL pending (cannot schedule another pending promotion yet)
-    assert hr.promote("emp1", "lead", 200, 150) is False
-
-    # Next register from outside at 130 (130 >= 100) -> ACTIVATES promotion!
-    hr.register("emp1", 130)  # Now senior
-    hr.register("emp1", 170)  # +40 senior
-
-    # Now emp1 is senior with total 80 hours
-    assert hr.top_n_employees(1, "senior") == ["emp1(80)"]
-    assert hr.top_n_employees(1, "junior") == []
+    # Next successful transfer must be "transfer3"
+    tid3 = bank.transfer(11, "A", "B", 200)
+    assert tid3 == "transfer3"
 
 
-def test_promote_exact_timestamp_boundary():
-    hr = EmployeeSystem()
-    hr.add_employee("emp", "intern", 20)
+def test_transfer_24h_exact_boundary_and_expiration():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
+    bank.deposit(4, "A", 2000)
 
-    assert hr.promote("emp", "junior", 40, 100) is True
+    # Transfer 1 at t = 1000. 24h boundary is 1000 + 86_400_000 = 86401000
+    tid1 = bank.transfer(1000, "A", "B", 500)
+    assert tid1 == "transfer1"
 
-    # Employee is outside and registers at exactly timestamp 100 -> activates immediately
-    hr.register("emp", 100)
-    hr.register("emp", 150)
+    # Transfer 2 at t = 2000. 24h boundary + 1 ms is 2000 + 86_400_000 + 1 = 86402001
+    tid2 = bank.transfer(2000, "A", "C", 700)
+    assert tid2 == "transfer2"
 
-    assert hr.top_n_employees(1, "junior") == ["emp(50)"]
-    assert hr.top_n_employees(1, "intern") == []
+    # A remaining balance = 2000 - 500 - 700 = 800
 
+    # Acceptance at exact boundary (inclusive) must SUCCEED
+    assert bank.accept_transfer(86401000, "B", "transfer1") is True
+    assert bank.pay(86401001, "B", 500) == 0
 
-def test_subsequent_promotions_after_activation():
-    hr = EmployeeSystem()
-    hr.add_employee("dev", "junior", 50)
+    # Acceptance 1 unit past 24h boundary must FAIL (expired)
+    assert bank.accept_transfer(86402001, "C", "transfer2") is False
 
-    # 1st promotion scheduled for 50
-    assert hr.promote("dev", "mid", 80, 50) is True
+    # Money from expired transfer2 (700) must be refunded to A
+    # A balance: 800 + 700 = 1500
+    assert bank.pay(86402002, "A", 1500) == 0
 
-    # Cannot schedule 2nd while 1st is pending
-    assert hr.promote("dev", "senior", 120, 100) is False
-
-    # Activate 1st promotion at 50
-    hr.register("dev", 50)
-    hr.register("dev", 70)  # 20 hours as mid
-
-    # Now 1st promotion is active, no pending promotion remains.
-    # We can now schedule a 2nd promotion!
-    assert hr.promote("dev", "senior", 120, 100) is True
-
-    # Activate 2nd promotion at 100
-    hr.register("dev", 100)
-    hr.register("dev", 140)  # 40 hours as senior
-
-    assert hr.top_n_employees(1, "senior") == ["dev(60)"]
-    assert hr.top_n_employees(1, "mid") == []
-    assert hr.top_n_employees(1, "junior") == []
+    # Attempting to accept an already expired transfer again must return False
+    # and must NOT double refund to A
+    assert bank.accept_transfer(86402003, "C", "transfer2") is False
+    assert bank.pay(86402004, "A", 1) is None
 
 
-def test_top_n_employees_with_promoted_peers_and_accumulated_hours():
-    hr = EmployeeSystem()
-    hr.add_employee("dev1", "developer", 100)
-    hr.add_employee("dev2", "developer", 100)
-    hr.add_employee("qa1", "qa", 80)
+def test_transfer_unauthorized_acceptance_and_double_acceptance():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
+    bank.deposit(4, "A", 1000)
 
-    # dev1 works 50 hours
-    hr.register("dev1", 0)
-    hr.register("dev1", 50)
+    tid = bank.transfer(5, "A", "B", 400)
+    assert tid == "transfer1"
 
-    # dev2 works 30 hours
-    hr.register("dev2", 0)
-    hr.register("dev2", 30)
+    # Unauthorized accounts cannot accept (returns False, transfer remains pending)
+    assert bank.accept_transfer(6, "C", "transfer1") is False
+    assert bank.accept_transfer(7, "A", "transfer1") is False
+    assert bank.accept_transfer(8, "Missing", "transfer1") is False
 
-    # qa1 works 40 hours as qa
-    hr.register("qa1", 0)
-    hr.register("qa1", 40)
-    assert hr.top_n_employees(1, "qa") == ["qa1(40)"]
+    # Legitimate target B accepts
+    assert bank.accept_transfer(9, "B", "transfer1") is True
 
-    # Promote qa1 to developer at 100
-    assert hr.promote("qa1", "developer", 120, 100) is True
-    hr.register("qa1", 100)
-    hr.register("qa1", 130)  # +30 as developer (total 70)
+    # Cannot accept an already accepted transfer
+    assert bank.accept_transfer(10, "B", "transfer1") is False
+    assert bank.accept_transfer(11, "C", "transfer1") is False
+    assert bank.accept_transfer(12, "A", "transfer1") is False
 
-    # qa1 is no longer listed in qa
-    assert hr.top_n_employees(1, "qa") == []
 
-    # In developer: qa1 (70) > dev1 (50) > dev2 (30)
-    assert hr.top_n_employees(3, "developer") == [
-        "qa1(70)",
-        "dev1(50)",
-        "dev2(30)",
+def test_transfer_invalid_transfer_id():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+
+    assert bank.accept_transfer(3, "B", "transfer1") is False
+    assert bank.accept_transfer(4, "B", "transfer999") is False
+    assert bank.accept_transfer(5, "B", "invalid") is False
+
+
+def test_multiple_concurrent_transfers_and_lifecycle():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
+    bank.deposit(4, "A", 1000)
+
+    # A creates 2 pending transfers
+    tid1 = bank.transfer(100, "A", "B", 300)  # A has 700
+    tid2 = bank.transfer(200, "A", "C", 400)  # A has 300
+    assert tid1 == "transfer1"
+    assert tid2 == "transfer2"
+
+    # A cannot transfer 400 (only 300 available)
+    assert bank.transfer(300, "A", "B", 400) is None
+
+    # A transfers remaining 300
+    tid3 = bank.transfer(400, "A", "B", 300)  # A has 0
+    assert tid3 == "transfer3"
+
+    # B accepts transfer1 at t=500
+    assert bank.accept_transfer(500, "B", "transfer1") is True
+
+    # transfer2 expires (200 + 86_400_000 + 10)
+    expire_time = 200 + 86_400_000 + 10
+    assert bank.accept_transfer(expire_time, "C", "transfer2") is False
+
+    # B accepts transfer3 within valid window
+    assert bank.accept_transfer(expire_time + 1, "B", "transfer3") is True
+
+    # A has 400 refunded from transfer2, B has 300+300=600, C has 0
+    # A's outgoing is 300 + 300 = 600 (transfer1 + transfer3)
+    # A pays 400 -> A outgoing = 1000
+    # B pays 600 -> B outgoing = 600
+    assert bank.pay(expire_time + 2, "A", 400) == 0
+    assert bank.pay(expire_time + 3, "B", 600) == 0
+    assert bank.top_spenders(expire_time + 4, 3) == [
+        "A(1000)",
+        "B(600)",
+        "C(0)",
     ]

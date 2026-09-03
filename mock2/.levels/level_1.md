@@ -1,31 +1,31 @@
-## Level 1 - Contas
+## Level 1 - Operações básicas
 
 ### Assinaturas
 ```python
-class BankingSystem:
-    def create_account(self, timestamp: int, account_id: str) -> bool:
+class FileStorage:
+    def add_file(self, name: str, size: int) -> bool:
         ...
 
-    def deposit(self, timestamp: int, account_id: str, amount: int) -> int | None:
+    def get_file_size(self, name: str) -> int | None:
         ...
 
-    def pay(self, timestamp: int, account_id: str, amount: int) -> int | None:
+    def copy_file(self, source: str, destination: str) -> bool:
         ...
 ```
 
 ### Requisitos
 
-`create_account(timestamp, account_id)`:
-- Cria conta com saldo `0`.
-- Não permite ID duplicado (retorna `False` se já existir; caso contrário `True`).
+`add_file(name, size)` adiciona um arquivo:
+- `name` é único.
+- Retorna `False` se já existir.
+- Caso contrário, adiciona e retorna `True`.
 
-`deposit(timestamp, account_id, amount)`:
-- Adiciona `amount` ao saldo da conta.
-- Retorna o novo saldo.
-- Retorna `None` se a conta não existir.
+`get_file_size(name)`:
+- Retorna o tamanho do arquivo;
+- Retorna `None` se não existir.
 
-`pay(timestamp, account_id, amount)`:
-- Retira dinheiro da conta.
-- Saldo nunca pode ficar negativo.
-- Retorna o novo saldo em caso de sucesso.
-- Retorna `None` se a conta não existir ou se não houver saldo suficiente.
+`copy_file(source, destination)`:
+- Cria `destination` com o mesmo tamanho de `source`;
+- Retorna `False` se `source` não existir;
+- Retorna `False` se `destination` já existir;
+- Caso contrário retorna `True`.

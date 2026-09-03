@@ -1,23 +1,23 @@
 ---
 
-## Level 2 - Ranking
+## Level 2 - Busca e ordenação
 
 ### Assinaturas adicionadas
 ```python
-class BankingSystem:
-    def top_spenders(self, timestamp: int, n: int) -> list[str]:
+class FileStorage:
+    def find_files(self, prefix: str, suffix: str) -> list[str]:
         ...
 ```
 
 ### Requisitos
 
-Defina `outgoing` como todo dinheiro que efetivamente saiu de uma conta por `pay`.
+Encontre arquivos cujo nome começa com `prefix` **e** termina com `suffix`.
 
-Retorne os `n` maiores pagadores no formato:
+Retorne no formato:
 ```text
-"<account_id>(<outgoing>)"
+"<name>(<size>)"
 ```
 
 Ordenação:
-1. `outgoing` decrescente;
-2. `account_id` lexicograficamente crescente.
+1. Maior tamanho primeiro;
+2. Em caso de empate, nome lexicograficamente crescente.
