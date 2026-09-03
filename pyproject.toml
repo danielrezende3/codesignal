@@ -12,3 +12,13 @@ dependencies = [
 addopts = "-x -v --tb=short"
 pythonpath = ["."]
 testpaths = ["mock1", "mock2", "mock3", "mock4"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.6",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+

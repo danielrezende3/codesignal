@@ -41,6 +41,23 @@ uv run pytest
 
 ---
 
+## 🧹 Linting e Formatação com Ruff
+
+Para verificar e formatar o código:
+
+```bash
+# Verificar problemas de linting
+uv run ruff check .
+
+# Corrigir automaticamente problemas corrigíveis
+uv run ruff check --fix .
+
+# Formatar arquivos
+uv run ruff format .
+```
+
+---
+
 ## 🎯 Estratégia de Treino
 
 Trate os quatro mocks como **quatro provas separadas**, não como 16 exercícios.
