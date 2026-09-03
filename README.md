@@ -2,33 +2,39 @@
 
 Simulados inspirados nas avaliações progressivas do CodeSignal (tempo sugerido: 90 min por mock).
 
-
+---
 
 ## 🎯 Ordem Recomendada
-
-Resolva os mocks de forma progressiva (Level 1 → 4), mantendo a compatibilidade com os níveis anteriores:
 
 1. [**Mock 3 — In-Memory Database**](./mock3/README.md) (`dict` → TTL → histórico)
 2. [**Mock 1 — File Storage**](./mock1/README.md) (Estado → ranking → ownership)
 3. [**Mock 4 — Employee System**](./mock4/README.md) (Intervalos + mudança de estado)
 4. [**Mock 2 — Banking System**](./mock2/README.md) (Estado + operações pendentes + merge)
 
+---
 
+## 🚀 Como Treinar (Simulação Passo a Passo)
 
-## 🧪 Testes
-
-A execução é progressiva: o pytest só avança para o próximo nível quando o atual passar.
+Todos os mocks iniciam no **Level 1** com `solution.py` limpo e as assinaturas completas no `README.md`.
 
 ```bash
-# Rodar um mock específico (ex: Mock 3)
-uv run pytest mock3/
+# 1. Ativar o mock desejado (ex: Mock 3)
+uv run sim start 3
 
-# Rodar apenas uma questão
-uv run pytest mock3/test_question_1.py
+# 2. Executar os testes do mock ativo
+uv run sim test
 
-# Rodar todos os mocks
-uv run pytest
+# 3. Quando os testes passarem, desbloquear o próximo nível
+uv run sim next
+
+# Ver o progresso de todos os mocks
+uv run sim status
+
+# Reiniciar um mock para o Level 1 se quiser recomeçar
+uv run sim reset 3
 ```
+
+---
 
 ## 🧹 Linting e Formatação
 

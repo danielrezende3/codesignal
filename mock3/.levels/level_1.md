@@ -1,5 +1,3 @@
-# Mock 3 - In-Memory Database
-
 ## Level 1 - CRUD
 
 Armazene dados no formato:
@@ -33,6 +31,3 @@ class InMemoryDB:
 - Remove o campo `field` do registro `key`.
 - Retorna `True` se o campo existia e foi removido.
 - Retorna `False` se o registro ou o campo não existiam.
-
----
-> 💡 Quando passar nos testes deste nível (`uv run sim test`), use `uv run sim next` para desbloquear o Level 2.

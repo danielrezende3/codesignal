@@ -1,7 +1,3 @@
-# Mock 1 - File Storage
-
-Implemente `FileStorage`, um sistema de armazenamento de arquivos em memória.
-
 ## Level 1 - Operações básicas
 
 ### Assinaturas
@@ -33,6 +29,3 @@ class FileStorage:
 - Retorna `False` se `source` não existir;
 - Retorna `False` se `destination` já existir;
 - Caso contrário retorna `True`.
-
----
-> 💡 Quando passar nos testes deste nível (`uv run sim test`), use `uv run sim next` para desbloquear o Level 2.

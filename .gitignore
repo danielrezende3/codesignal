@@ -173,4 +173,7 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+# CodeSignal simulator local state
+.sim_state.json
+
 # End of https://www.toptal.com/developers/gitignore/api/python

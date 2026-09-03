@@ -1,9 +1,3 @@
-# Mock 2 - Banking System
-
-Implemente um banco em memória.
-
-Todos os métodos recebem `timestamp`, e as chamadas serão fornecidas em **ordem estritamente crescente de timestamp**.
-
 ## Level 1 - Contas
 
 ### Assinaturas
@@ -35,6 +29,3 @@ class BankingSystem:
 - Saldo nunca pode ficar negativo.
 - Retorna o novo saldo em caso de sucesso.
 - Retorna `None` se a conta não existir ou se não houver saldo suficiente.
-
----
-> 💡 Quando passar nos testes deste nível (`uv run sim test`), use `uv run sim next` para desbloquear o Level 2.

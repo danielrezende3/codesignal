@@ -1,5 +1,3 @@
-# Mock 4 - Employee System
-
 ## Level 1 - Funcionários e horas
 
 ### Assinaturas
@@ -33,6 +31,3 @@ dentro -> saiu
 `get_worked_time(employee_id)`:
 - Retorna o tempo total trabalhado (soma de todos os intervalos `saiu - entrou`).
 - Se o funcionário não existir, retorna `None`.
-
----
-> 💡 Quando passar nos testes deste nível (`uv run sim test`), use `uv run sim next` para desbloquear o Level 2.
