@@ -16,6 +16,9 @@ Todos os mocks iniciam no **Level 1** com `solution.py` limpo e as assinaturas c
 O simulador descobre automaticamente as pastas que contêm uma estrutura `.levels` válida.
 
 ```bash
+# Mostra status dos mocks
+uv run sim
+
 # Validar o nível atual e desbloquear o próximo
 uv run sim next in_memory_database
 
