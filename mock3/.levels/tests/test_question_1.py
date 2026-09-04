@@ -32,6 +32,16 @@ def test_register_toggle_single_shift():
     assert hr.get_worked_time("A") == 40
 
 
+def test_register_nonexistent_employee():
+    hr = EmployeeSystem()
+
+    assert hr.register("missing", 10) == ""
+    assert hr.get_worked_time("missing") is None
+
+    # A failed registration must not implicitly create the employee.
+    assert hr.add_employee("missing", "developer", 100) is True
+
+
 def test_register_multiple_shifts_and_toggle_sequence():
     hr = EmployeeSystem()
     hr.add_employee("emp1", "qa", 50)

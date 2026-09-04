@@ -107,28 +107,28 @@ def test_top_spenders_deposits_and_failed_pays_do_not_count():
 
 def test_top_spenders_multi_tier_tie_breaking():
     bank = BankingSystem()
-    for acc in ["dave", "charlie", "bob", "alice", "eve"]:
-        bank.create_account(1, acc)
-        bank.deposit(2, acc, 2000)
+    for index, acc in enumerate(["dave", "charlie", "bob", "alice", "eve"]):
+        bank.create_account(index * 2 + 1, acc)
+        bank.deposit(index * 2 + 2, acc, 2000)
 
     # Tier 1 (1000 spent): bob, alice
-    bank.pay(3, "bob", 1000)
-    bank.pay(4, "alice", 1000)
+    bank.pay(11, "bob", 1000)
+    bank.pay(12, "alice", 1000)
 
     # Tier 2 (500 spent): dave, charlie
-    bank.pay(5, "dave", 500)
-    bank.pay(6, "charlie", 500)
+    bank.pay(13, "dave", 500)
+    bank.pay(14, "charlie", 500)
 
     # Tier 3 (0 spent): eve
 
-    assert bank.top_spenders(10, 5) == [
+    assert bank.top_spenders(15, 5) == [
         "alice(1000)",
         "bob(1000)",
         "charlie(500)",
         "dave(500)",
         "eve(0)",
     ]
-    assert bank.top_spenders(11, 3) == [
+    assert bank.top_spenders(16, 3) == [
         "alice(1000)",
         "bob(1000)",
         "charlie(500)",

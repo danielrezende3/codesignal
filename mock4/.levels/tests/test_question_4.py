@@ -201,3 +201,73 @@ def test_merge_chained_and_multi_account_transfers():
         "A(500)",
         "D(300)",
     ]
+
+
+def test_cancelled_transfer_is_refunded_without_counting_as_outgoing():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.deposit(3, "A", 1000)
+
+    assert bank.transfer(4, "A", "B", 400) == "transfer1"
+    assert bank.merge_accounts(5, "A", "B") is True
+
+    assert bank.top_spenders(6, 1) == ["A(0)"]
+    assert bank.pay(7, "A", 1000) == 0
+    assert bank.accept_transfer(8, "A", "transfer1") is False
+
+
+def test_merge_updates_all_pending_transfers_including_cancellation():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
+    bank.deposit(4, "B", 1000)
+    bank.deposit(5, "C", 500)
+
+    # After B is merged into A these become A -> C, C -> A, and A -> A.
+    assert bank.transfer(6, "B", "C", 200) == "transfer1"
+    assert bank.transfer(7, "C", "B", 300) == "transfer2"
+    assert bank.transfer(8, "B", "A", 100) == "transfer3"
+    assert bank.merge_accounts(9, "A", "B") is True
+
+    # transfer3 is cancelled and refunded; the other two remain acceptable.
+    assert bank.accept_transfer(10, "C", "transfer1") is True
+    assert bank.accept_transfer(11, "A", "transfer2") is True
+    assert bank.accept_transfer(12, "A", "transfer3") is False
+
+    assert bank.pay(13, "A", 1100) == 0
+    assert bank.pay(14, "C", 400) == 0
+    assert bank.top_spenders(15, 2) == ["A(1300)", "C(700)"]
+
+
+def test_merge_preserves_pending_transfer_involving_only_target():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
+    bank.deposit(4, "B", 200)
+    bank.deposit(5, "C", 400)
+
+    assert bank.transfer(6, "C", "A", 400) == "transfer1"
+    assert bank.merge_accounts(7, "A", "B") is True
+
+    # A already was the destination; merging B into it must not cancel or consume
+    # the pending transfer.
+    assert bank.accept_transfer(8, "A", "transfer1") is True
+    assert bank.pay(9, "A", 600) == 0
+    assert bank.top_spenders(10, 2) == ["A(600)", "C(400)"]
+
+
+def test_merge_sums_outgoing_from_previously_accepted_transfer():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
+    bank.deposit(4, "B", 500)
+
+    assert bank.transfer(5, "B", "C", 400) == "transfer1"
+    assert bank.accept_transfer(6, "C", "transfer1") is True
+    assert bank.merge_accounts(7, "A", "B") is True
+
+    assert bank.top_spenders(8, 3) == ["A(400)", "C(0)"]

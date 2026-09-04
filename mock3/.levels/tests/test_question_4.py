@@ -202,3 +202,30 @@ def test_calc_salary_nonexistent_and_zero_worked():
 
     # Employee never worked -> returns 0
     assert hr.calc_salary("emp", 0, 100) == 0
+
+
+def test_calc_salary_isolated_between_employees():
+    hr = EmployeeSystem()
+    hr.add_employee("A", "developer", 10)
+    hr.add_employee("B", "developer", 30)
+
+    hr.register("A", 10)
+    hr.register("B", 20)
+    hr.register("A", 30)
+    hr.register("B", 40)
+
+    assert hr.calc_salary("A", 0, 100) == 200
+    assert hr.calc_salary("B", 0, 100) == 600
+
+
+def test_duplicate_employee_does_not_overwrite_position_or_compensation():
+    hr = EmployeeSystem()
+    assert hr.add_employee("emp", "developer", 10) is True
+    assert hr.add_employee("emp", "manager", 99) is False
+
+    hr.register("emp", 10)
+    hr.register("emp", 20)
+
+    assert hr.top_n_employees(1, "developer") == ["emp(10)"]
+    assert hr.top_n_employees(1, "manager") == []
+    assert hr.calc_salary("emp", 0, 100) == 100

@@ -20,8 +20,8 @@ def test_promote_basic_lifecycle():
     hr.register("A", 110)  # Ativa promoção -> vira senior e entra no escritório
     hr.register("A", 150)  # Sai -> +40 como senior
 
-    # Agora A é senior; top_n_employees considera apenas a posição atual com total acumulado
-    assert hr.top_n_employees(1, "senior") == ["A(50)"]
+    # Agora A é senior; as 10 horas de junior não entram no ranking de senior
+    assert hr.top_n_employees(1, "senior") == ["A(40)"]
     assert hr.top_n_employees(1, "junior") == []
     assert hr.get_worked_time("A") == 50
 
@@ -62,8 +62,8 @@ def test_promote_delayed_activation_when_inside_office_at_promotion_timestamp():
     hr.register("emp1", 130)  # Now senior
     hr.register("emp1", 170)  # +40 senior
 
-    # Now emp1 is senior with total 80 hours
-    assert hr.top_n_employees(1, "senior") == ["emp1(80)"]
+    # Only the 40 hours worked as senior count in the senior ranking
+    assert hr.top_n_employees(1, "senior") == ["emp1(40)"]
     assert hr.top_n_employees(1, "junior") == []
 
 
@@ -79,6 +79,40 @@ def test_promote_exact_timestamp_boundary():
 
     assert hr.top_n_employees(1, "junior") == ["emp(50)"]
     assert hr.top_n_employees(1, "intern") == []
+
+
+def test_promotion_activates_immediately_on_qualifying_entry():
+    hr = EmployeeSystem()
+    hr.add_employee("emp", "junior", 20)
+
+    assert hr.promote("emp", "senior", 40, 100) is True
+    assert hr.register("emp", 100) == "registered"
+
+    # The position changes on entry, even while the new shift is still open.
+    assert hr.top_n_employees(1, "junior") == []
+    assert hr.top_n_employees(1, "senior") == ["emp(0)"]
+
+    # Activation also clears the pending promotion immediately.
+    assert hr.promote("emp", "lead", 80, 200) is True
+
+
+def test_pending_promotions_are_independent_per_employee():
+    hr = EmployeeSystem()
+    hr.add_employee("A", "junior", 20)
+    hr.add_employee("B", "analyst", 30)
+
+    assert hr.promote("A", "senior", 40, 100) is True
+    assert hr.promote("B", "manager", 60, 100) is True
+
+    hr.register("A", 100)
+    hr.register("B", 110)
+    hr.register("A", 120)
+    hr.register("B", 130)
+
+    assert hr.top_n_employees(1, "senior") == ["A(20)"]
+    assert hr.top_n_employees(1, "manager") == ["B(20)"]
+    assert hr.top_n_employees(1, "junior") == []
+    assert hr.top_n_employees(1, "analyst") == []
 
 
 def test_subsequent_promotions_after_activation():
@@ -103,12 +137,12 @@ def test_subsequent_promotions_after_activation():
     hr.register("dev", 100)
     hr.register("dev", 140)  # 40 hours as senior
 
-    assert hr.top_n_employees(1, "senior") == ["dev(60)"]
+    assert hr.top_n_employees(1, "senior") == ["dev(40)"]
     assert hr.top_n_employees(1, "mid") == []
     assert hr.top_n_employees(1, "junior") == []
 
 
-def test_top_n_employees_with_promoted_peers_and_accumulated_hours():
+def test_top_n_employees_with_promoted_peers_and_current_position_hours():
     hr = EmployeeSystem()
     hr.add_employee("dev1", "developer", 100)
     hr.add_employee("dev2", "developer", 100)
@@ -130,14 +164,14 @@ def test_top_n_employees_with_promoted_peers_and_accumulated_hours():
     # Promote qa1 to developer at 100
     assert hr.promote("qa1", "developer", 120, 100) is True
     hr.register("qa1", 100)
-    hr.register("qa1", 130)  # +30 as developer (total 70)
+    hr.register("qa1", 130)  # +30 as developer
 
     # qa1 is no longer listed in qa
     assert hr.top_n_employees(1, "qa") == []
 
-    # In developer: qa1 (70) > dev1 (50) > dev2 (30)
+    # Only time worked as developer is ranked. dev2 wins the 30-hour ID tie.
     assert hr.top_n_employees(3, "developer") == [
-        "qa1(70)",
         "dev1(50)",
         "dev2(30)",
+        "qa1(30)",
     ]

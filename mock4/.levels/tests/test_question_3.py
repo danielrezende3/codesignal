@@ -166,3 +166,54 @@ def test_multiple_concurrent_transfers_and_lifecycle():
         "B(600)",
         "C(0)",
     ]
+
+
+def test_expired_transfer_is_refunded_before_an_unrelated_operation():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.deposit(3, "A", 1000)
+
+    transfer_time = 100
+    assert bank.transfer(transfer_time, "A", "B", 400) == "transfer1"
+
+    # Expiration is automatic: A must have the refund available even though nobody
+    # attempted to accept transfer1 first.
+    after_expiration = transfer_time + 86_400_000 + 1
+    assert bank.pay(after_expiration, "A", 1000) == 0
+    assert bank.accept_transfer(after_expiration + 1, "B", "transfer1") is False
+
+    # An expired transfer is not outgoing and cannot be refunded twice.
+    assert bank.top_spenders(after_expiration + 2, 2) == ["A(1000)", "B(0)"]
+    assert bank.pay(after_expiration + 3, "A", 1) is None
+
+
+def test_accepted_transfer_is_never_refunded_after_expiration_time():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.deposit(3, "A", 1000)
+
+    transfer_time = 10
+    assert bank.transfer(transfer_time, "A", "B", 400) == "transfer1"
+    assert bank.accept_transfer(11, "B", "transfer1") is True
+    assert bank.pay(12, "B", 400) == 0
+
+    # A has only its original 600. A sweeper must not treat an accepted transfer
+    # as pending and refund it once its original deadline passes.
+    after_expiration = transfer_time + 86_400_000 + 1
+    assert bank.pay(after_expiration, "A", 601) is None
+    assert bank.pay(after_expiration + 1, "A", 600) == 0
+    assert bank.top_spenders(after_expiration + 2, 2) == ["A(1000)", "B(400)"]
+
+
+def test_transfer_ids_are_global_across_source_accounts():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
+    bank.deposit(4, "A", 100)
+    bank.deposit(5, "C", 100)
+
+    assert bank.transfer(6, "A", "B", 50) == "transfer1"
+    assert bank.transfer(7, "C", "B", 50) == "transfer2"

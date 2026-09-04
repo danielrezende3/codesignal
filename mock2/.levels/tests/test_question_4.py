@@ -9,10 +9,14 @@ def test_compression_and_decompression_basic():
     assert fs.compress_file("u1", "/movie") == 700
     assert fs.get_file_size("/movie") is None
     assert fs.get_file_size("/movie.COMPRESSED") == 300
+    assert fs.find_files("/movie", ".COMPRESSED") == ["/movie.COMPRESSED(300)"]
+    assert fs.find_files("/movie", "/movie") == []
 
     assert fs.decompress_file("u1", "/movie.COMPRESSED") == 400
     assert fs.get_file_size("/movie") == 600
     assert fs.get_file_size("/movie.COMPRESSED") is None
+    assert fs.find_files("/movie", ".COMPRESSED") == []
+    assert fs.find_files("/movie", "/movie") == ["/movie(600)"]
 
 
 def test_compress_odd_size_integer_division():
@@ -58,6 +62,9 @@ def test_compress_target_already_exists():
     # Tentativa de compactar /file1 quando /file1.COMPRESSED já existe deve falhar
     assert fs.compress_file("u1", "/file1") is None
     assert fs.get_file_size("/file1") == 200
+    assert fs.get_file_size("/file1.COMPRESSED") == 100
+    # A falha não pode consumir quota nem alterar nenhum dos arquivos.
+    assert fs.add_file_by("u1", "/remaining", 700) == 0
 
 
 def test_decompress_exceeds_quota():
@@ -71,6 +78,9 @@ def test_decompress_exceeds_quota():
     # Como só restam 100 de quota, deve falhar (retornar None).
     assert fs.decompress_file("u1", "/f1.COMPRESSED") is None
     assert fs.get_file_size("/f1.COMPRESSED") == 200
+    assert fs.get_file_size("/f1") is None
+    # A operação que falhou não pode consumir os 100 restantes.
+    assert fs.add_file_by("u1", "/remaining", 100) == 0
 
 
 def test_decompress_target_already_occupied():
@@ -85,6 +95,9 @@ def test_decompress_target_already_occupied():
     # Descompactar /doc.COMPRESSED não pode sobrescrever /doc existente
     assert fs.decompress_file("u1", "/doc.COMPRESSED") is None
     assert fs.get_file_size("/doc.COMPRESSED") == 100
+    assert fs.get_file_size("/doc") == 100
+    # A falha mantém a quota intacta: os dois arquivos usam somente 200.
+    assert fs.add_file_by("u1", "/remaining", 800) == 0
 
 
 def test_decompress_not_ending_in_compressed():
@@ -92,3 +105,26 @@ def test_decompress_not_ending_in_compressed():
     fs.add_user("u1", 1000)
     fs.add_file_by("u1", "/normal.txt", 100)
     assert fs.decompress_file("u1", "/normal.txt") is None
+
+
+def test_decompress_requires_owner_and_existing_file():
+    fs = FileStorage()
+    fs.add_user("u1", 500)
+    fs.add_user("u2", 500)
+    fs.add_file_by("u1", "/private", 200)
+    fs.compress_file("u1", "/private")
+
+    assert fs.decompress_file("u2", "/private.COMPRESSED") is None
+    assert fs.get_file_size("/private.COMPRESSED") == 100
+    assert fs.get_file_size("/private") is None
+    assert fs.decompress_file("u1", "/missing.COMPRESSED") is None
+
+
+def test_decompress_removes_only_the_final_compressed_suffix():
+    fs = FileStorage()
+    fs.add_user("u1", 500)
+    assert fs.add_file_by("u1", "/archive.COMPRESSED.COMPRESSED", 100) == 400
+
+    assert fs.decompress_file("u1", "/archive.COMPRESSED.COMPRESSED") == 300
+    assert fs.get_file_size("/archive.COMPRESSED.COMPRESSED") is None
+    assert fs.get_file_size("/archive.COMPRESSED") == 200

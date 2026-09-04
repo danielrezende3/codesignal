@@ -64,8 +64,12 @@ def test_find_files_overlapping_prefix_suffix():
         "ababa(100)",
         "aba(50)",
     ]
-    # Exact full match
-    assert fs.find_files("aba", "aba") == ["aba(50)"]
+    # Both names start and end with "aba"; matching is not restricted to names
+    # whose full value equals the prefix or suffix.
+    assert fs.find_files("aba", "aba") == [
+        "ababa(100)",
+        "aba(50)",
+    ]
     # "a" starts with "a" and ends with "a"
     assert fs.find_files("a", "a") == [
         "ababa(100)",
@@ -78,3 +82,14 @@ def test_find_files_empty_storage():
     fs = FileStorage()
     assert fs.find_files("any", "thing") == []
     assert fs.find_files("", "") == []
+
+
+def test_find_files_requires_prefix_and_suffix_at_name_boundaries():
+    fs = FileStorage()
+    fs.add_file("nature.txt", 100)
+    fs.add_file("banana.txt", 300)
+    fs.add_file("native.txt.backup", 200)
+
+    # "na" appears inside banana.txt, but is not its prefix.
+    # ".txt" appears inside native.txt.backup, but is not its suffix.
+    assert fs.find_files("na", ".txt") == ["nature.txt(100)"]

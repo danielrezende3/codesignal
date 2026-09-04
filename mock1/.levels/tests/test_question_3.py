@@ -47,6 +47,16 @@ def test_overwrite_permanent_with_ttl():
     assert db.get(30, "A", "k") is None
 
 
+def test_overwrite_active_ttl_with_another_ttl():
+    db = InMemoryDB()
+    db.set_with_ttl(10, "A", "k", 100, 50)  # [10, 60)
+    db.set_with_ttl(20, "A", "k", 200, 10)  # [20, 30)
+
+    assert db.get(25, "A", "k") == 200
+    assert db.get(30, "A", "k") is None
+    assert db.get(59, "A", "k") is None
+
+
 def test_delete_ttl_field_before_expiry():
     db = InMemoryDB()
     db.set_with_ttl(10, "A", "k", 100, 50)  # [10, 60)
@@ -54,3 +64,11 @@ def test_delete_ttl_field_before_expiry():
     assert db.get(25, "A", "k") is None
     # Deletar novamente retorna False
     assert db.delete(30, "A", "k") is False
+
+
+def test_delete_expired_ttl_field_returns_false():
+    db = InMemoryDB()
+    db.set_with_ttl(10, "A", "k", 100, 10)  # [10, 20)
+
+    assert db.delete(20, "A", "k") is False
+    assert db.get(21, "A", "k") is None

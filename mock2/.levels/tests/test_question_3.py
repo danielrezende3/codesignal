@@ -88,3 +88,79 @@ def test_update_capacity_no_removal_needed():
     assert fs.update_capacity("u1", 600) == 0
     assert fs.update_capacity("u1", 200) == 0
     assert fs.get_file_size("/a") == 100
+
+
+def test_file_names_are_unique_across_admin_and_users():
+    fs = FileStorage()
+    fs.add_user("u1", 100)
+    fs.add_user("u2", 100)
+
+    assert fs.add_file("/admin-file", 500) is True
+    assert fs.add_file_by("u1", "/admin-file", 50) is None
+
+    assert fs.add_file_by("u1", "/user-file", 60) == 40
+    assert fs.add_file("/user-file", 500) is False
+    assert fs.add_file_by("u2", "/user-file", 50) is None
+
+    # Failed collisions must not consume either user's capacity.
+    assert fs.add_file_by("u1", "/u1-rest", 40) == 0
+    assert fs.add_file_by("u2", "/u2-full", 100) == 0
+    assert fs.get_file_size("/admin-file") == 500
+    assert fs.get_file_size("/user-file") == 60
+
+
+def test_copy_of_admin_file_remains_unrestricted_by_user_quotas():
+    fs = FileStorage()
+    fs.add_user("u1", 0)
+    fs.add_file("/admin-source", 1000)
+
+    assert fs.copy_file("/admin-source", "/admin-copy") is True
+    assert fs.get_file_size("/admin-copy") == 1000
+    assert fs.update_capacity("u1", 0) == 0
+    assert fs.get_file_size("/admin-copy") == 1000
+
+
+def test_successful_copy_preserves_owner_for_later_quota_operations():
+    fs = FileStorage()
+    fs.add_user("u1", 500)
+    assert fs.add_file_by("u1", "/source", 200) == 300
+    assert fs.copy_file("/source", "/copy") is True
+
+    # The copied file must be visible to searches and count against u1's quota.
+    assert fs.find_files("/", "") == ["/copy(200)", "/source(200)"]
+    assert fs.add_file_by("u1", "/remainder", 100) == 0
+
+    # Both 200-byte files belong to u1. On a tie, /copy is removed first.
+    assert fs.update_capacity("u1", 300) == 1
+    assert fs.get_file_size("/copy") is None
+    assert fs.get_file_size("/source") == 200
+    assert fs.get_file_size("/remainder") == 100
+    assert fs.find_files("/", "") == ["/source(200)", "/remainder(100)"]
+
+
+def test_update_capacity_only_considers_files_owned_by_that_user():
+    fs = FileStorage()
+    fs.add_user("u1", 600)
+    fs.add_user("u2", 1000)
+    fs.add_file_by("u1", "/u1-big", 400)
+    fs.add_file_by("u1", "/u1-small", 200)
+    fs.add_file_by("u2", "/u2-huge", 900)
+    fs.add_file("/admin-huge", 2000)
+
+    assert fs.update_capacity("u1", 250) == 1
+    assert fs.get_file_size("/u1-big") is None
+    assert fs.get_file_size("/u1-small") == 200
+    assert fs.get_file_size("/u2-huge") == 900
+    assert fs.get_file_size("/admin-huge") == 2000
+
+
+def test_reduced_capacity_is_persisted_after_removing_files():
+    fs = FileStorage()
+    fs.add_user("u1", 1000)
+    fs.add_file_by("u1", "/large", 600)
+    fs.add_file_by("u1", "/keep", 300)
+
+    assert fs.update_capacity("u1", 400) == 1
+    assert fs.get_file_size("/large") is None
+    assert fs.add_file_by("u1", "/too-much", 101) is None
+    assert fs.add_file_by("u1", "/fits", 100) == 0

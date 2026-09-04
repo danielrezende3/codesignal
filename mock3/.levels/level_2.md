@@ -11,12 +11,16 @@ class EmployeeSystem:
 
 ### Requisitos
 
-Retorne os `n` funcionários com maior tempo trabalhado cuja **posição atual** seja `position`.
+Retorne os `n` funcionários com maior tempo trabalhado na **posição atual** cuja
+posição atual seja `position`.
 
 Formato de retorno:
 ```text
 "<employee_id>(<worked_time>)"
 ```
+
+`worked_time` é o tempo acumulado exclusivamente na posição atual. Depois de
+uma promoção, o tempo trabalhado nas posições anteriores não entra nesse valor.
 
 Ordenação:
 1. Tempo trabalhado decrescente;

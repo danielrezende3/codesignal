@@ -50,6 +50,14 @@ def test_scan_empty_prefix_matches_all():
     ]
 
 
+def test_scan_by_prefix_does_not_match_prefix_in_the_middle():
+    db = InMemoryDB()
+    db.set(1, "rec", "banana", 1)
+    db.set(2, "rec", "nature", 2)
+
+    assert db.scan_by_prefix(3, "rec", "na") == ["nature(2)"]
+
+
 def test_scan_all_fields_deleted():
     db = InMemoryDB()
     db.set(1, "rec", "f1", 10)

@@ -137,7 +137,7 @@ def sync_tests(mock: str, current_level: int) -> None:
         src_file = source_tests / f"test_question_{lvl}.py"
 
         if lvl <= current_level:
-            if not dest_file.exists() and src_file.exists():
+            if src_file.exists():
                 shutil.copy2(src_file, dest_file)
         else:
             if dest_file.exists():

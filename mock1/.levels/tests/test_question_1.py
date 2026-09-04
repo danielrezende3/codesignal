@@ -13,7 +13,9 @@ def test_set_get_and_delete_basic():
 
     assert db.delete(7, "user1", "age") is True
     assert db.get(8, "user1", "age") is None
-    assert db.delete(9, "user1", "age") is False
+    assert db.get(9, "user1", "score") == 100
+    assert db.delete(10, "user1", "age") is False
+    assert db.delete(11, "missing_user", "age") is False
 
 
 def test_overwrite_field_and_values():
