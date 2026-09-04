@@ -11,7 +11,7 @@ def get_question_number(nodeid: str) -> int:
 def pytest_collection_modifyitems(session, config, items):
     """
     Garante que os testes sejam sempre ordenados por:
-    1. Diretório do Mock (mock1, mock2, mock3, mock4)
+    1. Diretório do mock descoberto
     2. Número da questão (test_question_1.py -> test_question_4.py)
     3. Ordem de definição dentro do arquivo de teste
     """

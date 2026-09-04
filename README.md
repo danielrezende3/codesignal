@@ -1,42 +1,30 @@
-# CodeSignal - Mocks Progressivos em Python
+# CodeSignal Industry Coding Assessment
 
-Simulados inspirados nas avaliações progressivas do CodeSignal (tempo sugerido: 90 min por mock).
+Simulados inspirados nas avaliações progressivas do [CodeSignal](https://support.codesignal.com/hc/en-us/articles/19116922232983-What-are-the-Industry-Coding-Assessment-ICA-rules) (tempo sugerido: 90 min por mock).
 
----
 
 ## 🎯 Simulados (Ordem de Treino)
 
-1. [**Mock 1 — In-Memory Database**](./mock1/README.md) (`dict` → TTL → histórico)
-2. [**Mock 2 — File Storage**](./mock2/README.md) (Estado → ranking → ownership)
-3. [**Mock 3 — Employee System**](./mock3/README.md) (Intervalos + mudança de estado)
-4. [**Mock 4 — Banking System**](./mock4/README.md) (Estado + operações pendentes + merge)
-
----
+- [**In-Memory Database**](./in_memory_database/README.md) (`dict` → TTL → histórico)
+- [**File Storage**](./file_storage/README.md) (Estado → ranking → ownership)
+- [**Employee System**](./employee_system/README.md) (Intervalos + mudança de estado)
+- [**Banking System**](./banking_system/README.md) (Estado + operações pendentes + merge)
 
 ## 🚀 Como Treinar (Simulação Passo a Passo)
 
 Todos os mocks iniciam no **Level 1** com `solution.py` limpo e as assinaturas completas no `README.md`.
+O simulador descobre automaticamente as pastas que contêm uma estrutura `.levels` válida.
 
 ```bash
-# 1. Ativar o mock desejado (ex: Mock 1)
-uv run sim start 1
+# 1. Ativar o mock desejado (ex: In-Memory Database)
+uv run sim start in_memory_database
 
 # 2. Executar os testes do mock ativo
-uv run sim test
+uv run sim test in_memory_database
 
 # 3. Quando os testes passarem, desbloquear o próximo nível
-uv run sim next
+uv run sim next in_memory_database
 
 # Reiniciar um mock para o Level 1 se quiser recomeçar
-uv run sim reset 1
-```
-
----
-
-## 🧹 Linting e Formatação
-
-```bash
-uv run ruff check .          # Verificar lint
-uv run ruff check --fix .    # Corrigir lint automaticamente
-uv run ruff format .         # Formatar código
+uv run sim reset in_memory_database
 ```

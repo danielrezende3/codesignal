@@ -6,7 +6,9 @@ sim.py - Gerenciador de simulação progressiva para CodeSignal
 from __future__ import annotations
 
 import argparse
+import ast
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -15,68 +17,100 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent
 STATE_FILE = ROOT_DIR / ".sim_state.json"
 
-MOCKS = {
-    "mock1": {
-        "id": "mock1",
-        "name": "Mock 1 — In-Memory Database",
-        "class_name": "InMemoryDB",
-        "order": 1,
-    },
-    "mock2": {
-        "id": "mock2",
-        "name": "Mock 2 — File Storage",
-        "class_name": "FileStorage",
-        "order": 2,
-    },
-    "mock3": {
-        "id": "mock3",
-        "name": "Mock 3 — Employee System",
-        "class_name": "EmployeeSystem",
-        "order": 3,
-    },
-    "mock4": {
-        "id": "mock4",
-        "name": "Mock 4 — Banking System",
-        "class_name": "BankingSystem",
-        "order": 4,
-    },
-}
+
+def discover_mocks() -> dict[str, dict[str, str | int]]:
+    mocks = {}
+
+    for mock_dir in sorted(ROOT_DIR.iterdir()):
+        levels_dir = mock_dir / ".levels"
+        if not mock_dir.is_dir() or not levels_dir.is_dir():
+            continue
+
+        level_numbers = []
+        for level_file in levels_dir.glob("level_*.md"):
+            match = re.fullmatch(r"level_(\d+)\.md", level_file.name)
+            if match:
+                level_numbers.append(int(match.group(1)))
+
+        header_file = levels_dir / "header.md"
+        stubs_file = levels_dir / "stubs_full.py"
+        if not level_numbers or not header_file.exists() or not stubs_file.exists():
+            continue
+
+        title = header_file.read_text(encoding="utf-8").splitlines()[0]
+        name = title.removeprefix("#").strip()
+
+        tree = ast.parse(stubs_file.read_text(encoding="utf-8"))
+        class_node = next(
+            (node for node in tree.body if isinstance(node, ast.ClassDef)), None
+        )
+        if class_node is None:
+            continue
+
+        mocks[mock_dir.name] = {
+            "id": mock_dir.name,
+            "name": name,
+            "class_name": class_node.name,
+            "total_levels": max(level_numbers),
+        }
+
+    return mocks
+
+
+MOCKS = discover_mocks()
 
 
 def normalize_mock(name: str | None) -> str | None:
     if not name:
         return None
-    name = name.strip().lower()
+    name = name.strip().lower().replace("-", "_").replace(" ", "_")
     if name in MOCKS:
         return name
-    if name in {"1", "m1"}:
-        return "mock1"
-    if name in {"2", "m2"}:
-        return "mock2"
-    if name in {"3", "m3"}:
-        return "mock3"
-    if name in {"4", "m4"}:
-        return "mock4"
     return None
 
 
 def load_state() -> dict:
     if STATE_FILE.exists():
         try:
-            return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+            state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+            mocks_state = state.setdefault("mocks", {})
+
+            for missing_mock in set(mocks_state) - set(MOCKS):
+                del mocks_state[missing_mock]
+
+            for mock, mock_info in MOCKS.items():
+                saved = mocks_state.setdefault(mock, {"current_level": 1})
+                total_levels = int(mock_info["total_levels"])
+                saved["current_level"] = min(
+                    max(saved.get("current_level", 1), 1), total_levels
+                )
+                saved["total_levels"] = total_levels
+
+            if state.get("active_mock") not in MOCKS:
+                state["active_mock"] = None
+
+            return state
         except (json.JSONDecodeError, OSError):
             pass
 
     default_state = {
         "active_mock": None,
-        "mocks": {m: {"current_level": 1, "total_levels": 4} for m in MOCKS},
+        "mocks": {
+            mock: {
+                "current_level": 1,
+                "total_levels": mock_info["total_levels"],
+            }
+            for mock, mock_info in MOCKS.items()
+        },
     }
     save_state(default_state)
     return default_state
 
 
 def save_state(state: dict) -> None:
-    STATE_FILE.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    STATE_FILE.write_text(
+        json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 def get_active_mock(state: dict, requested: str | None = None) -> str:
@@ -84,13 +118,17 @@ def get_active_mock(state: dict, requested: str | None = None) -> str:
         normalized = normalize_mock(requested)
         if normalized:
             return normalized
-        print(f"❌ Mock inválido: '{requested}'. Opções: mock1, mock2, mock3, mock4 (ou 1, 2, 3, 4)")
+        options = ", ".join(MOCKS)
+        print(f"❌ Mock inválido: '{requested}'. Opções: {options}")
         sys.exit(1)
 
     active = state.get("active_mock")
     if not active:
         print("⚠️  Nenhum simulado está ativo no momento.")
-        print("👉 Use 'uv run sim start <mock>' para iniciar um simulado (ex: uv run sim start 3).")
+        print(
+            "👉 Use 'uv run sim start <pasta>' para iniciar um simulado "
+            "(ex: uv run sim start employee_system)."
+        )
         sys.exit(1)
     return active
 
@@ -99,6 +137,7 @@ def build_readme_content(mock: str, max_level: int) -> str:
     mock_dir = ROOT_DIR / mock
     levels_dir = mock_dir / ".levels"
     header_file = levels_dir / "header.md"
+    total_levels = int(MOCKS[mock]["total_levels"])
 
     parts = []
     if header_file.exists():
@@ -109,13 +148,13 @@ def build_readme_content(mock: str, max_level: int) -> str:
         if lvl_file.exists():
             parts.append(lvl_file.read_text(encoding="utf-8").strip())
 
-    if max_level < 4:
+    if max_level < total_levels:
         parts.append(
-            f"---\n> 💡 Quando passar nos testes deste nível (`uv run sim test`), use `uv run sim next` para desbloquear o Level {max_level + 1}."
+            f"---\n> 💡 Quando passar nos testes deste nível (`uv run sim test {mock}`), use `uv run sim next {mock}` para desbloquear o Level {max_level + 1}."
         )
     else:
         parts.append(
-            "---\n> 🏆 Parabéns! Todos os 4 níveis deste mock foram desbloqueados. Valide o resultado final com `uv run sim test`!"
+            f"---\n> 🏆 Parabéns! Todos os {total_levels} níveis deste mock foram desbloqueados. Valide o resultado final com `uv run sim test {mock}`!"
         )
 
     return "\n\n".join(parts) + "\n"
@@ -132,30 +171,34 @@ def sync_tests(mock: str, current_level: int) -> None:
     mock_dir = ROOT_DIR / mock
     source_tests = mock_dir / ".levels" / "tests"
 
-    for lvl in range(1, 5):
-        dest_file = mock_dir / f"test_question_{lvl}.py"
-        src_file = source_tests / f"test_question_{lvl}.py"
+    for dest_file in mock_dir.glob("test_question_*.py"):
+        match = re.fullmatch(r"test_question_(\d+)\.py", dest_file.name)
+        if not match:
+            continue
+        level = int(match.group(1))
+        if level > current_level or not (source_tests / dest_file.name).exists():
+            dest_file.unlink()
 
-        if lvl <= current_level:
-            if src_file.exists():
-                shutil.copy2(src_file, dest_file)
-        else:
-            if dest_file.exists():
-                dest_file.unlink()
-
+    for src_file in source_tests.glob("test_question_*.py"):
+        match = re.fullmatch(r"test_question_(\d+)\.py", src_file.name)
+        if match and int(match.group(1)) <= current_level:
+            shutil.copy2(src_file, mock_dir / src_file.name)
 
 
 def cmd_start(args: argparse.Namespace) -> int:
     state = load_state()
     if not args.mock and not state.get("active_mock"):
         print("⚠️  Informe qual mock deseja iniciar.")
-        print("👉 Exemplo: uv run sim start 3  (ordem recomendada: 3 -> 1 -> 4 -> 2)")
+        print("👉 Exemplo: uv run sim start employee_system")
         return 1
 
     mock = get_active_mock(state, args.mock)
     state["active_mock"] = mock
 
-    mock_info = state["mocks"].setdefault(mock, {"current_level": 1, "total_levels": 4})
+    total_levels = int(MOCKS[mock]["total_levels"])
+    mock_info = state["mocks"].setdefault(
+        mock, {"current_level": 1, "total_levels": total_levels}
+    )
     current_level = mock_info.get("current_level", 1)
 
     # Garantir que o README reflete o nível atual e testes sincronizados
@@ -167,12 +210,12 @@ def cmd_start(args: argparse.Namespace) -> int:
 
     print("=" * 60)
     print(f"🚀 Simulado Ativo: {MOCKS[mock]['name']}")
-    print(f"📍 Nível Atual: Level {current_level} de 4")
+    print(f"📍 Nível Atual: Level {current_level} de {total_levels}")
     print("=" * 60)
     print(f"📖 Enunciado e assinaturas : {mock}/README.md")
     print(f"✍️  Arquivo para solução    : {mock}/solution.py")
-    print("🧪 Executar testes          : uv run sim test")
-    print("⏭️  Avançar de nível        : uv run sim next")
+    print(f"🧪 Executar testes          : uv run sim test {mock}")
+    print(f"⏭️  Avançar de nível        : uv run sim next {mock}")
     print("=" * 60)
     return 0
 
@@ -190,26 +233,38 @@ def cmd_test(args: argparse.Namespace) -> int:
 def cmd_next(args: argparse.Namespace) -> int:
     state = load_state()
     mock = get_active_mock(state, args.mock)
-    mock_info = state["mocks"].setdefault(mock, {"current_level": 1, "total_levels": 4})
+    total_levels = int(MOCKS[mock]["total_levels"])
+    mock_info = state["mocks"].setdefault(
+        mock, {"current_level": 1, "total_levels": total_levels}
+    )
     current_level = mock_info.get("current_level", 1)
 
-    if current_level >= 4:
-        print(f"🏆 {MOCKS[mock]['name']} já está no nível máximo (Level 4 de 4)!")
+    if current_level >= total_levels:
+        print(
+            f"🏆 {MOCKS[mock]['name']} já está no nível máximo "
+            f"(Level {total_levels} de {total_levels})!"
+        )
         return 0
 
     next_level = current_level + 1
-    print(f"🔍 Validando testes até o Level {current_level} para {MOCKS[mock]['name']}...")
+    print(
+        f"🔍 Validando testes até o Level {current_level} para {MOCKS[mock]['name']}..."
+    )
 
     # Executar pytest para os testes até o nível atual
-    test_files = [f"{mock}/test_question_{lvl}.py" for lvl in range(1, current_level + 1)]
+    test_files = [
+        f"{mock}/test_question_{lvl}.py" for lvl in range(1, current_level + 1)
+    ]
     cmd = [sys.executable, "-m", "pytest", "-q", "--tb=short", *test_files]
     result = subprocess.run(cmd, cwd=ROOT_DIR, check=False)
 
     if result.returncode != 0:
         print()
         print("❌ BLOQUEADO: Você ainda tem testes falhando no nível atual!")
-        print(f"👉 Resolva os requisitos do Level {current_level} antes de avançar para o Level {next_level}.")
-        print("💡 Use `uv run sim test` para ver o relatório detalhado de erros.")
+        print(
+            f"👉 Resolva os requisitos do Level {current_level} antes de avançar para o Level {next_level}."
+        )
+        print(f"💡 Use `uv run sim test {mock}` para ver os erros.")
         return 1
 
     # Atualizar nível, README e testes
@@ -223,12 +278,12 @@ def cmd_next(args: argparse.Namespace) -> int:
     print()
     print("=" * 60)
     print(f"🎉 PARABÉNS! Todos os testes do Level {current_level} passaram!")
-    print(f"🔓 Level {next_level} de 4 desbloqueado com sucesso!")
+    print(f"🔓 Level {next_level} de {total_levels} desbloqueado com sucesso!")
     print("=" * 60)
     print(f"📖 Novos requisitos e assinaturas adicionados em: {mock}/README.md")
     print(f"🧪 Novo arquivo de teste liberado: {mock}/test_question_{next_level}.py")
     print(f"✍️  Adicione os novos métodos em: {mock}/solution.py")
-    print("🧪 Teste quando estiver pronto com: uv run sim test")
+    print(f"🧪 Teste com: uv run sim test {mock}")
     print("=" * 60)
     return 0
 
@@ -239,30 +294,31 @@ def cmd_status(args: argparse.Namespace) -> int:
     active_title = (
         MOCKS[active_mock]["name"]
         if active_mock and active_mock in MOCKS
-        else "Nenhum (use 'uv run sim start <mock>')"
+        else "Nenhum (use `uv run sim start <pasta>`)"
     )
-
-    # Mocks ordenados pela ordem recomendada
-    sorted_mocks = sorted(MOCKS.keys(), key=lambda m: MOCKS[m]["order"])
 
     print("=" * 64)
     print("                CodeSignal - Status dos Mocks")
     print("=" * 64)
     print(f"Simulado ativo: {active_title}\n")
 
-    for m in sorted_mocks:
-        info = state["mocks"].get(m, {"current_level": 1, "total_levels": 4})
+    for m in MOCKS:
+        total_levels = int(MOCKS[m]["total_levels"])
+        info = state["mocks"].get(m, {"current_level": 1, "total_levels": total_levels})
         lvl = info.get("current_level", 1)
         is_active = " [ATIVO]" if m == active_mock else ""
-        progress = "■" * lvl + "□" * (4 - lvl)
-        print(f"  [{MOCKS[m]['order']}] {MOCKS[m]['name']:<35} [{progress}] Level {lvl}/4{is_active}")
+        progress = "■" * lvl + "□" * (total_levels - lvl)
+        print(
+            f"  {MOCKS[m]['name']:<35} [{progress}] "
+            f"Level {lvl}/{total_levels}{is_active}"
+        )
 
     print("=" * 64)
     print("Comandos:")
-    print("  uv run sim start <mock>   # Seleciona mock (ex: mock1 ou 1)")
-    print("  uv run sim test           # Executa os testes do mock ativo")
-    print("  uv run sim next           # Desbloqueia o próximo nível (após passar nos testes)")
-    print("  uv run sim reset <mock>   # Reinicia o mock para o Level 1")
+    print("  uv run sim start <pasta>  # Exemplo: employee_system")
+    print("  uv run sim test <pasta>   # Exemplo: employee_system")
+    print("  uv run sim next <pasta>   # Exemplo: employee_system")
+    print("  uv run sim reset <pasta>  # Exemplo: employee_system")
     print("=" * 64)
     return 0
 
@@ -270,12 +326,18 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_reset(args: argparse.Namespace) -> int:
     state = load_state()
     if not args.mock and not state.get("active_mock"):
-        print("⚠️  Informe qual mock deseja reiniciar (ex: uv run sim reset 3).")
+        print(
+            "⚠️  Informe qual pasta deseja reiniciar "
+            "(ex: uv run sim reset employee_system)."
+        )
         return 1
 
     mock = get_active_mock(state, args.mock)
 
-    state["mocks"][mock] = {"current_level": 1, "total_levels": 4}
+    state["mocks"][mock] = {
+        "current_level": 1,
+        "total_levels": int(MOCKS[mock]["total_levels"]),
+    }
     save_state(state)
 
     readme_file = ROOT_DIR / mock / "README.md"
@@ -299,12 +361,12 @@ def main(argv: list[str] | None = None) -> None:
 
     # start
     p_start = subparsers.add_parser("start", help="Inicia ou ativa um simulado")
-    p_start.add_argument("mock", nargs="?", help="Nome ou número do mock (ex: mock3 ou 3)")
+    p_start.add_argument("mock", nargs="?", help="Nome da pasta (ex: employee_system)")
     p_start.set_defaults(func=cmd_start)
 
     # test
     p_test = subparsers.add_parser("test", help="Executa testes do mock ativo")
-    p_test.add_argument("mock", nargs="?", help="Nome ou número do mock (opcional)")
+    p_test.add_argument("mock", nargs="?", help="Nome da pasta (opcional)")
     p_test.add_argument(
         "pytest_args",
         nargs=argparse.REMAINDER,
@@ -313,17 +375,21 @@ def main(argv: list[str] | None = None) -> None:
     p_test.set_defaults(func=cmd_test)
 
     # next
-    p_next = subparsers.add_parser("next", help="Avança para o próximo nível se os testes passarem")
-    p_next.add_argument("mock", nargs="?", help="Nome ou número do mock (opcional)")
+    p_next = subparsers.add_parser(
+        "next", help="Avança para o próximo nível se os testes passarem"
+    )
+    p_next.add_argument("mock", nargs="?", help="Nome da pasta (opcional)")
     p_next.set_defaults(func=cmd_next)
 
     # status
-    p_status = subparsers.add_parser("status", help="Exibe o status e progresso dos mocks")
+    p_status = subparsers.add_parser(
+        "status", help="Exibe o status e progresso dos mocks"
+    )
     p_status.set_defaults(func=cmd_status)
 
     # reset
     p_reset = subparsers.add_parser("reset", help="Reinicia um simulado para o Level 1")
-    p_reset.add_argument("mock", nargs="?", help="Nome ou número do mock (opcional)")
+    p_reset.add_argument("mock", nargs="?", help="Nome da pasta (opcional)")
     p_reset.set_defaults(func=cmd_reset)
 
     parsed_args = parser.parse_args(argv)

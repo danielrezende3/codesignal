@@ -19,9 +19,9 @@ sim = "sim:main"
 only-include = ["sim.py"]
 
 [tool.pytest.ini_options]
-addopts = "-x -v --tb=short"
+addopts = "-x -v --tb=short --import-mode=importlib"
 pythonpath = ["."]
-testpaths = ["mock1", "mock2", "mock3", "mock4"]
+testpaths = ["."]
 
 [dependency-groups]
 dev = [
