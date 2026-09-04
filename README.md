@@ -5,6 +5,7 @@ Simulados inspirados nas avaliações progressivas do [CodeSignal](https://suppo
 
 ## 🎯 Simulados (Ordem de Treino)
 
+- [**Integer Container**](./integer_container/README.md) (coleções → mediana)
 - [**In-Memory Database**](./in_memory_database/README.md) (`dict` → TTL → histórico)
 - [**File Storage**](./file_storage/README.md) (Estado → ranking → ownership)
 - [**Employee System**](./employee_system/README.md) (Intervalos + mudança de estado)
