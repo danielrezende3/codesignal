@@ -27,9 +27,6 @@ uv run sim test
 # 3. Quando os testes passarem, desbloquear o próximo nível
 uv run sim next
 
-# Ver o progresso de todos os mocks
-uv run sim status
-
 # Reiniciar um mock para o Level 1 se quiser recomeçar
 uv run sim reset 1
 ```
