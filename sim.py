@@ -86,15 +86,13 @@ def load_state() -> dict:
                 )
                 saved["total_levels"] = total_levels
 
-            if state.get("active_mock") not in MOCKS:
-                state["active_mock"] = None
+            state.pop("active_mock", None)
 
             return state
         except (json.JSONDecodeError, OSError):
             pass
 
     default_state = {
-        "active_mock": None,
         "mocks": {
             mock: {
                 "current_level": 1,
@@ -113,7 +111,7 @@ def save_state(state: dict) -> None:
     )
 
 
-def get_active_mock(state: dict, requested: str | None = None) -> str:
+def get_mock(requested: str | None) -> str:
     if requested:
         normalized = normalize_mock(requested)
         if normalized:
@@ -122,15 +120,8 @@ def get_active_mock(state: dict, requested: str | None = None) -> str:
         print(f"❌ Mock inválido: '{requested}'. Opções: {options}")
         sys.exit(1)
 
-    active = state.get("active_mock")
-    if not active:
-        print("⚠️  Nenhum simulado está ativo no momento.")
-        print(
-            "👉 Use 'uv run sim start <pasta>' para iniciar um simulado "
-            "(ex: uv run sim start employee_system)."
-        )
-        sys.exit(1)
-    return active
+    print("⚠️  Informe a pasta do mock (ex: employee_system).")
+    sys.exit(1)
 
 
 def build_readme_content(mock: str, max_level: int) -> str:
@@ -185,44 +176,15 @@ def sync_tests(mock: str, current_level: int) -> None:
             shutil.copy2(src_file, mock_dir / src_file.name)
 
 
-def cmd_start(args: argparse.Namespace) -> int:
-    state = load_state()
-    if not args.mock and not state.get("active_mock"):
-        print("⚠️  Informe qual mock deseja iniciar.")
-        print("👉 Exemplo: uv run sim start employee_system")
-        return 1
-
-    mock = get_active_mock(state, args.mock)
-    state["active_mock"] = mock
-
-    total_levels = int(MOCKS[mock]["total_levels"])
-    mock_info = state["mocks"].setdefault(
-        mock, {"current_level": 1, "total_levels": total_levels}
-    )
-    current_level = mock_info.get("current_level", 1)
-
-    # Garantir que o README reflete o nível atual e testes sincronizados
-    readme_file = ROOT_DIR / mock / "README.md"
-    readme_file.write_text(build_readme_content(mock, current_level), encoding="utf-8")
-    sync_tests(mock, current_level)
-
-    save_state(state)
-
-    print("=" * 60)
-    print(f"🚀 Simulado Ativo: {MOCKS[mock]['name']}")
-    print(f"📍 Nível Atual: Level {current_level} de {total_levels}")
-    print("=" * 60)
-    print(f"📖 Enunciado e assinaturas : {mock}/README.md")
-    print(f"✍️  Arquivo para solução    : {mock}/solution.py")
-    print(f"🧪 Executar testes          : uv run sim test {mock}")
-    print(f"⏭️  Avançar de nível        : uv run sim next {mock}")
-    print("=" * 60)
-    return 0
-
-
 def cmd_test(args: argparse.Namespace) -> int:
     state = load_state()
-    mock = get_active_mock(state, args.mock)
+    mock = get_mock(args.mock)
+    current_level = state["mocks"][mock]["current_level"]
+
+    sync_tests(mock, current_level)
+    readme_file = ROOT_DIR / mock / "README.md"
+    readme_file.write_text(build_readme_content(mock, current_level), encoding="utf-8")
+    save_state(state)
 
     print(f"🧪 Executando testes para {MOCKS[mock]['name']}...")
     cmd = [sys.executable, "-m", "pytest", f"{mock}/", *args.pytest_args]
@@ -232,12 +194,17 @@ def cmd_test(args: argparse.Namespace) -> int:
 
 def cmd_next(args: argparse.Namespace) -> int:
     state = load_state()
-    mock = get_active_mock(state, args.mock)
+    mock = get_mock(args.mock)
     total_levels = int(MOCKS[mock]["total_levels"])
     mock_info = state["mocks"].setdefault(
         mock, {"current_level": 1, "total_levels": total_levels}
     )
     current_level = mock_info.get("current_level", 1)
+
+    sync_tests(mock, current_level)
+    readme_file = ROOT_DIR / mock / "README.md"
+    readme_file.write_text(build_readme_content(mock, current_level), encoding="utf-8")
+    save_state(state)
 
     if current_level >= total_levels:
         print(
@@ -271,7 +238,6 @@ def cmd_next(args: argparse.Namespace) -> int:
     mock_info["current_level"] = next_level
     save_state(state)
 
-    readme_file = ROOT_DIR / mock / "README.md"
     readme_file.write_text(build_readme_content(mock, next_level), encoding="utf-8")
     sync_tests(mock, next_level)
 
@@ -288,51 +254,31 @@ def cmd_next(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_status(args: argparse.Namespace) -> int:
+def print_status() -> None:
     state = load_state()
-    active_mock = state.get("active_mock")
-    active_title = (
-        MOCKS[active_mock]["name"]
-        if active_mock and active_mock in MOCKS
-        else "Nenhum (use `uv run sim start <pasta>`)"
-    )
 
     print("=" * 64)
     print("                CodeSignal - Status dos Mocks")
     print("=" * 64)
-    print(f"Simulado ativo: {active_title}\n")
 
     for m in MOCKS:
         total_levels = int(MOCKS[m]["total_levels"])
         info = state["mocks"].get(m, {"current_level": 1, "total_levels": total_levels})
         lvl = info.get("current_level", 1)
-        is_active = " [ATIVO]" if m == active_mock else ""
         progress = "■" * lvl + "□" * (total_levels - lvl)
-        print(
-            f"  {MOCKS[m]['name']:<35} [{progress}] "
-            f"Level {lvl}/{total_levels}{is_active}"
-        )
+        print(f"  {MOCKS[m]['name']:<35} [{progress}] Level {lvl}/{total_levels}")
 
     print("=" * 64)
     print("Comandos:")
-    print("  uv run sim start <pasta>  # Exemplo: employee_system")
     print("  uv run sim test <pasta>   # Exemplo: employee_system")
     print("  uv run sim next <pasta>   # Exemplo: employee_system")
     print("  uv run sim reset <pasta>  # Exemplo: employee_system")
     print("=" * 64)
-    return 0
 
 
 def cmd_reset(args: argparse.Namespace) -> int:
     state = load_state()
-    if not args.mock and not state.get("active_mock"):
-        print(
-            "⚠️  Informe qual pasta deseja reiniciar "
-            "(ex: uv run sim reset employee_system)."
-        )
-        return 1
-
-    mock = get_active_mock(state, args.mock)
+    mock = get_mock(args.mock)
 
     state["mocks"][mock] = {
         "current_level": 1,
@@ -359,14 +305,9 @@ def main(argv: list[str] | None = None) -> None:
     )
     subparsers = parser.add_subparsers(dest="command", help="Comandos disponíveis")
 
-    # start
-    p_start = subparsers.add_parser("start", help="Inicia ou ativa um simulado")
-    p_start.add_argument("mock", nargs="?", help="Nome da pasta (ex: employee_system)")
-    p_start.set_defaults(func=cmd_start)
-
     # test
-    p_test = subparsers.add_parser("test", help="Executa testes do mock ativo")
-    p_test.add_argument("mock", nargs="?", help="Nome da pasta (opcional)")
+    p_test = subparsers.add_parser("test", help="Executa os testes de um mock")
+    p_test.add_argument("mock", help="Nome da pasta")
     p_test.add_argument(
         "pytest_args",
         nargs=argparse.REMAINDER,
@@ -378,24 +319,18 @@ def main(argv: list[str] | None = None) -> None:
     p_next = subparsers.add_parser(
         "next", help="Avança para o próximo nível se os testes passarem"
     )
-    p_next.add_argument("mock", nargs="?", help="Nome da pasta (opcional)")
+    p_next.add_argument("mock", help="Nome da pasta")
     p_next.set_defaults(func=cmd_next)
-
-    # status
-    p_status = subparsers.add_parser(
-        "status", help="Exibe o status e progresso dos mocks"
-    )
-    p_status.set_defaults(func=cmd_status)
 
     # reset
     p_reset = subparsers.add_parser("reset", help="Reinicia um simulado para o Level 1")
-    p_reset.add_argument("mock", nargs="?", help="Nome da pasta (opcional)")
+    p_reset.add_argument("mock", help="Nome da pasta")
     p_reset.set_defaults(func=cmd_reset)
 
     parsed_args = parser.parse_args(argv)
     if not parsed_args.command:
-        cmd_status(parsed_args)
-        sys.exit(0)
+        print_status()
+        return
 
     exit_code = parsed_args.func(parsed_args)
     sys.exit(exit_code or 0)

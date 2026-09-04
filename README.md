@@ -2,7 +2,6 @@
 
 Simulados inspirados nas avaliações progressivas do [CodeSignal](https://support.codesignal.com/hc/en-us/articles/19116922232983-What-are-the-Industry-Coding-Assessment-ICA-rules) (tempo sugerido: 90 min por mock).
 
-
 ## 🎯 Simulados (Ordem de Treino)
 
 - [**Integer Container**](./integer_container/README.md) (coleções → mediana)
@@ -17,14 +16,11 @@ Todos os mocks iniciam no **Level 1** com `solution.py` limpo e as assinaturas c
 O simulador descobre automaticamente as pastas que contêm uma estrutura `.levels` válida.
 
 ```bash
-# 1. Ativar o mock desejado (ex: In-Memory Database)
-uv run sim start in_memory_database
-
-# 2. Executar os testes do mock ativo
-uv run sim test in_memory_database
-
-# 3. Quando os testes passarem, desbloquear o próximo nível
+# Validar o nível atual e desbloquear o próximo
 uv run sim next in_memory_database
+
+# Executar os testes sem avançar de nível
+uv run sim test in_memory_database
 
 # Reiniciar um mock para o Level 1 se quiser recomeçar
 uv run sim reset in_memory_database
