@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import json
 import re
 import shutil
 import subprocess
@@ -15,7 +14,6 @@ import sys
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent
-STATE_FILE = ROOT_DIR / ".sim_state.json"
 
 
 def discover_mocks() -> dict[str, dict[str, str | int]]:
@@ -69,48 +67,6 @@ def normalize_mock(name: str | None) -> str | None:
     return None
 
 
-def load_state() -> dict:
-    if STATE_FILE.exists():
-        try:
-            state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-            mocks_state = state.setdefault("mocks", {})
-
-            for missing_mock in set(mocks_state) - set(MOCKS):
-                del mocks_state[missing_mock]
-
-            for mock, mock_info in MOCKS.items():
-                saved = mocks_state.setdefault(mock, {"current_level": 1})
-                total_levels = int(mock_info["total_levels"])
-                saved["current_level"] = min(
-                    max(saved.get("current_level", 1), 1), total_levels
-                )
-                saved["total_levels"] = total_levels
-
-            state.pop("active_mock", None)
-
-            return state
-        except (json.JSONDecodeError, OSError):
-            pass
-
-    default_state = {
-        "mocks": {
-            mock: {
-                "current_level": 1,
-                "total_levels": mock_info["total_levels"],
-            }
-            for mock, mock_info in MOCKS.items()
-        },
-    }
-    save_state(default_state)
-    return default_state
-
-
-def save_state(state: dict) -> None:
-    STATE_FILE.write_text(
-        json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
-
-
 def get_mock(requested: str | None) -> str:
     if requested:
         normalized = normalize_mock(requested)
@@ -122,6 +78,17 @@ def get_mock(requested: str | None) -> str:
 
     print("⚠️  Informe a pasta do mock (ex: employee_system).")
     sys.exit(1)
+
+
+def get_current_level(mock: str) -> int:
+    levels = []
+    for test_file in (ROOT_DIR / mock).glob("test_question_*.py"):
+        match = re.fullmatch(r"test_question_(\d+)\.py", test_file.name)
+        if match:
+            levels.append(int(match.group(1)))
+
+    total_levels = int(MOCKS[mock]["total_levels"])
+    return min(max(levels, default=1), total_levels)
 
 
 def build_readme_content(mock: str, max_level: int) -> str:
@@ -145,7 +112,7 @@ def build_readme_content(mock: str, max_level: int) -> str:
         )
     else:
         parts.append(
-            f"---\n> 🏆 Parabéns! Todos os {total_levels} níveis deste mock foram desbloqueados. Valide o resultado final com `uv run sim test {mock}`!"
+            f"---\n> 🏆 Todos os {total_levels} níveis deste mock foram desbloqueados. Valide a solução completa com `uv run sim next {mock}`!"
         )
 
     return "\n\n".join(parts) + "\n"
@@ -177,15 +144,12 @@ def sync_tests(mock: str, current_level: int) -> None:
 
 
 def cmd_test(args: argparse.Namespace) -> int:
-    state = load_state()
     mock = get_mock(args.mock)
-    current_level = state["mocks"][mock]["current_level"]
+    current_level = get_current_level(mock)
 
     sync_tests(mock, current_level)
     readme_file = ROOT_DIR / mock / "README.md"
     readme_file.write_text(build_readme_content(mock, current_level), encoding="utf-8")
-    save_state(state)
-
     print(f"🧪 Executando testes para {MOCKS[mock]['name']}...")
     cmd = [sys.executable, "-m", "pytest", f"{mock}/", *args.pytest_args]
     result = subprocess.run(cmd, cwd=ROOT_DIR, check=False)
@@ -193,27 +157,13 @@ def cmd_test(args: argparse.Namespace) -> int:
 
 
 def cmd_next(args: argparse.Namespace) -> int:
-    state = load_state()
     mock = get_mock(args.mock)
     total_levels = int(MOCKS[mock]["total_levels"])
-    mock_info = state["mocks"].setdefault(
-        mock, {"current_level": 1, "total_levels": total_levels}
-    )
-    current_level = mock_info.get("current_level", 1)
+    current_level = get_current_level(mock)
 
     sync_tests(mock, current_level)
     readme_file = ROOT_DIR / mock / "README.md"
     readme_file.write_text(build_readme_content(mock, current_level), encoding="utf-8")
-    save_state(state)
-
-    if current_level >= total_levels:
-        print(
-            f"🏆 {MOCKS[mock]['name']} já está no nível máximo "
-            f"(Level {total_levels} de {total_levels})!"
-        )
-        return 0
-
-    next_level = current_level + 1
     print(
         f"🔍 Validando testes até o Level {current_level} para {MOCKS[mock]['name']}..."
     )
@@ -227,17 +177,20 @@ def cmd_next(args: argparse.Namespace) -> int:
 
     if result.returncode != 0:
         print()
-        print("❌ BLOQUEADO: Você ainda tem testes falhando no nível atual!")
-        print(
-            f"👉 Resolva os requisitos do Level {current_level} antes de avançar para o Level {next_level}."
-        )
+        print("❌ Você ainda tem testes falhando no nível atual!")
+        if current_level < total_levels:
+            print(
+                f"👉 Resolva os requisitos do Level {current_level} antes de avançar para o Level {current_level + 1}."
+            )
         print(f"💡 Use `uv run sim test {mock}` para ver os erros.")
         return 1
 
-    # Atualizar nível, README e testes
-    mock_info["current_level"] = next_level
-    save_state(state)
+    if current_level >= total_levels:
+        print()
+        print(f"🏆 {MOCKS[mock]['name']} concluído: todos os testes passaram!")
+        return 0
 
+    next_level = current_level + 1
     readme_file.write_text(build_readme_content(mock, next_level), encoding="utf-8")
     sync_tests(mock, next_level)
 
@@ -255,16 +208,13 @@ def cmd_next(args: argparse.Namespace) -> int:
 
 
 def print_status() -> None:
-    state = load_state()
-
     print("=" * 64)
     print("                CodeSignal - Status dos Mocks")
     print("=" * 64)
 
     for m in MOCKS:
         total_levels = int(MOCKS[m]["total_levels"])
-        info = state["mocks"].get(m, {"current_level": 1, "total_levels": total_levels})
-        lvl = info.get("current_level", 1)
+        lvl = get_current_level(m)
         progress = "■" * lvl + "□" * (total_levels - lvl)
         print(f"  {MOCKS[m]['name']:<35} [{progress}] Level {lvl}/{total_levels}")
 
@@ -277,14 +227,7 @@ def print_status() -> None:
 
 
 def cmd_reset(args: argparse.Namespace) -> int:
-    state = load_state()
     mock = get_mock(args.mock)
-
-    state["mocks"][mock] = {
-        "current_level": 1,
-        "total_levels": int(MOCKS[mock]["total_levels"]),
-    }
-    save_state(state)
 
     readme_file = ROOT_DIR / mock / "README.md"
     readme_file.write_text(build_readme_content(mock, 1), encoding="utf-8")
