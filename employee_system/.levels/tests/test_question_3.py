@@ -1,3 +1,5 @@
+import pytest
+
 from employee_system.solution import EmployeeSystem
 
 
@@ -31,28 +33,22 @@ def test_promote_nonexistent_employee():
     assert hr.promote("missing", "lead", 500, 10) is False
 
 
-def test_promote_delayed_activation_when_inside_office_at_promotion_timestamp():
-    """
-    Subtle CodeSignal trap:
-    If employee enters BEFORE start_timestamp and exits AT OR AFTER start_timestamp,
-    the exit does NOT activate the promotion because the employee was inside before registering.
-    The promotion only activates on the FIRST entry from outside at or after start_timestamp.
-    """
+@pytest.mark.parametrize("exit_timestamp", [100, 120])
+def test_promote_delayed_activation_when_inside_office_at_promotion_timestamp(
+    exit_timestamp,
+):
+    """Uma saída no limite ou depois dele nunca ativa a promoção."""
     hr = EmployeeSystem()
     hr.add_employee("emp1", "junior", 50)
 
-    # Schedule promotion for T=100
+    # A promoção pode ser agendada durante um turno aberto.
+    hr.register("emp1", 80)
     assert hr.promote("emp1", "senior", 100, 100) is True
 
-    # Clock in at 80 (outside -> inside) before T=100
-    hr.register("emp1", 80)
+    hr.register("emp1", exit_timestamp)
+    junior_time = exit_timestamp - 80
 
-    # Clock out at 120 (inside -> outside) after T=100.
-    # Was inside before registering -> does NOT activate promotion!
-    hr.register("emp1", 120)
-
-    # Position is STILL junior after exiting at 120
-    assert hr.top_n_employees(1, "junior") == ["emp1(40)"]
+    assert hr.top_n_employees(1, "junior") == [f"emp1({junior_time})"]
     assert hr.top_n_employees(1, "senior") == []
 
     # Promotion is STILL pending (cannot schedule another pending promotion yet)
@@ -60,11 +56,14 @@ def test_promote_delayed_activation_when_inside_office_at_promotion_timestamp():
 
     # Next register from outside at 130 (130 >= 100) -> ACTIVATES promotion!
     hr.register("emp1", 130)  # Now senior
+    assert hr.top_n_employees(1, "senior") == ["emp1(0)"]
+    assert hr.get_worked_time("emp1") == junior_time
     hr.register("emp1", 170)  # +40 senior
 
     # Only the 40 hours worked as senior count in the senior ranking
     assert hr.top_n_employees(1, "senior") == ["emp1(40)"]
     assert hr.top_n_employees(1, "junior") == []
+    assert hr.get_worked_time("emp1") == junior_time + 40
 
 
 def test_promote_exact_timestamp_boundary():
@@ -94,6 +93,20 @@ def test_promotion_activates_immediately_on_qualifying_entry():
 
     # Activation also clears the pending promotion immediately.
     assert hr.promote("emp", "lead", 80, 200) is True
+
+    # A segunda promoção também precisa aguardar uma entrada futura.
+    assert hr.register("emp", 210) == "registered"
+    assert hr.top_n_employees(1, "senior") == ["emp(110)"]
+    assert hr.top_n_employees(1, "lead") == []
+    assert hr.promote("emp", "manager", 100, 220) is False
+
+    assert hr.register("emp", 220) == "registered"
+    assert hr.top_n_employees(1, "senior") == []
+    assert hr.top_n_employees(1, "lead") == ["emp(0)"]
+    assert hr.get_worked_time("emp") == 110
+    assert hr.register("emp", 240) == "registered"
+    assert hr.top_n_employees(1, "lead") == ["emp(20)"]
+    assert hr.get_worked_time("emp") == 130
 
 
 def test_pending_promotions_are_independent_per_employee():
@@ -142,7 +155,7 @@ def test_subsequent_promotions_after_activation():
     assert hr.top_n_employees(1, "junior") == []
 
 
-def test_top_n_employees_with_promoted_peers_and_current_position_hours():
+def test_top_n_employees_with_promoted_peers_and_current_stage_hours():
     hr = EmployeeSystem()
     hr.add_employee("dev1", "developer", 100)
     hr.add_employee("dev2", "developer", 100)
@@ -233,3 +246,63 @@ def test_past_promotion_threshold_does_not_reprocess_existing_registers():
     hr.register("emp", 70)
     assert hr.top_n_employees(1, "senior") == ["emp(10)"]
     assert hr.get_worked_time("emp") == 40
+
+
+def test_rejected_promotion_preserves_original_pending_promotion():
+    hr = EmployeeSystem()
+    hr.add_employee("emp", "junior", 10)
+
+    assert hr.promote("emp", "senior", 20, 100) is True
+    assert hr.promote("emp", "lead", 30, 50) is False
+    assert hr.promote("emp", "senior", 20, 100) is False
+
+    # A tentativa rejeitada não antecipa nem substitui a promoção original.
+    hr.register("emp", 50)
+    hr.register("emp", 60)
+    assert hr.top_n_employees(1, "junior") == ["emp(10)"]
+    assert hr.top_n_employees(1, "senior") == []
+    assert hr.top_n_employees(1, "lead") == []
+
+    hr.register("emp", 100)
+    assert hr.top_n_employees(1, "senior") == ["emp(0)"]
+    assert hr.top_n_employees(1, "junior") == []
+    assert hr.top_n_employees(1, "lead") == []
+    hr.register("emp", 120)
+    assert hr.top_n_employees(1, "senior") == ["emp(20)"]
+    assert hr.get_worked_time("emp") == 30
+
+
+def test_past_promotion_threshold_while_outside_waits_for_future_entry():
+    hr = EmployeeSystem()
+    hr.add_employee("emp", "junior", 10)
+    hr.register("emp", 10)
+    hr.register("emp", 30)
+
+    assert hr.promote("emp", "senior", 20, 0) is True
+    assert hr.top_n_employees(1, "junior") == ["emp(20)"]
+    assert hr.top_n_employees(1, "senior") == []
+    assert hr.get_worked_time("emp") == 20
+    assert hr.promote("emp", "lead", 30, 0) is False
+
+    hr.register("emp", 40)
+    assert hr.top_n_employees(1, "junior") == []
+    assert hr.top_n_employees(1, "senior") == ["emp(0)"]
+    hr.register("emp", 50)
+    assert hr.top_n_employees(1, "senior") == ["emp(10)"]
+    assert hr.get_worked_time("emp") == 30
+
+
+def test_promotion_accepts_zero_compensation_and_timestamp():
+    hr = EmployeeSystem()
+    hr.add_employee("emp", "junior", 10)
+
+    assert hr.promote("emp", "senior", 0, 0) is True
+    assert hr.top_n_employees(1, "junior") == ["emp(0)"]
+    assert hr.top_n_employees(1, "senior") == []
+
+    assert hr.register("emp", 0) == "registered"
+    assert hr.top_n_employees(1, "junior") == []
+    assert hr.top_n_employees(1, "senior") == ["emp(0)"]
+    assert hr.register("emp", 10) == "registered"
+    assert hr.top_n_employees(1, "senior") == ["emp(10)"]
+    assert hr.get_worked_time("emp") == 10
