@@ -271,3 +271,72 @@ def test_merge_sums_outgoing_from_previously_accepted_transfer():
     assert bank.merge_accounts(7, "A", "B") is True
 
     assert bank.top_spenders(8, 3) == ["A(400)", "C(0)"]
+
+
+def test_recreated_account_is_fresh_and_does_not_reclaim_redirected_transfers():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
+    bank.deposit(4, "B", 500)
+    bank.deposit(5, "C", 300)
+    bank.pay(6, "B", 50)
+    assert bank.transfer(7, "B", "C", 200) == "transfer1"
+    assert bank.transfer(8, "C", "B", 100) == "transfer2"
+
+    assert bank.merge_accounts(9, "A", "B") is True
+    assert bank.create_account(10, "B") is True
+    assert bank.top_spenders(11, 3) == ["A(50)", "B(0)", "C(0)"]
+    assert bank.pay(12, "B", 1) is None
+
+    # The new B cannot accept the old B's incoming transfer.
+    assert bank.accept_transfer(13, "B", "transfer2") is False
+    assert bank.accept_transfer(14, "A", "transfer2") is True
+    assert bank.accept_transfer(15, "C", "transfer1") is True
+    assert bank.top_spenders(16, 3) == ["A(250)", "C(100)", "B(0)"]
+    assert bank.pay(17, "A", 350) == 0
+    assert bank.pay(18, "C", 400) == 0
+    assert bank.pay(19, "B", 1) is None
+
+    # New transfers still use the global counter after account recreation.
+    assert bank.deposit(20, "B", 50) == 50
+    assert bank.transfer(21, "B", "A", 50) == "transfer3"
+
+
+def test_merge_preserves_deadline_and_refunds_current_owner_after_id_reuse():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.create_account(3, "C")
+    bank.deposit(4, "B", 500)
+    assert bank.transfer(10, "B", "C", 400) == "transfer1"
+
+    deadline = 10 + 86_400_000
+    assert bank.merge_accounts(deadline - 2, "A", "B") is True
+    assert bank.create_account(deadline - 1, "B") is True
+
+    # The merge did not restart the 24-hour window. Refund goes to A, not new B.
+    assert bank.pay(deadline + 1, "A", 500) == 0
+    assert bank.accept_transfer(deadline + 2, "C", "transfer1") is False
+    assert bank.pay(deadline + 3, "B", 1) is None
+    assert bank.pay(deadline + 4, "A", 1) is None
+    assert bank.top_spenders(deadline + 5, 3) == ["A(500)", "B(0)", "C(0)"]
+
+
+def test_merge_cancelled_transfer_is_not_refunded_again_after_deadline():
+    bank = BankingSystem()
+    bank.create_account(1, "A")
+    bank.create_account(2, "B")
+    bank.deposit(3, "A", 500)
+    assert bank.transfer(4, "A", "B", 400) == "transfer1"
+    assert bank.merge_accounts(5, "A", "B") is True
+    assert bank.pay(6, "A", 500) == 0
+    assert bank.create_account(7, "B") is True
+
+    after_deadline = 4 + 86_400_000 + 1
+    assert bank.accept_transfer(after_deadline, "B", "transfer1") is False
+    assert bank.pay(after_deadline + 1, "A", 1) is None
+    assert bank.pay(after_deadline + 2, "B", 1) is None
+    assert bank.top_spenders(after_deadline + 3, 2) == ["A(500)", "B(0)"]
+    assert bank.deposit(after_deadline + 4, "A", 100) == 100
+    assert bank.transfer(after_deadline + 5, "A", "B", 100) == "transfer2"

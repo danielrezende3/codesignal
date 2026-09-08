@@ -14,9 +14,15 @@ class InMemoryDB:
 > Qual era o valor desse campo em `at_timestamp`?
 
 Considere:
-- Criação e modificações anteriores a `at_timestamp`;
+- Criação e modificações realizadas em ou antes de `at_timestamp`;
 - Sobrescrita;
 - Delete;
 - TTL;
 - Recriação posterior.
 - Retorne `None` se o campo não existia ou estava expirado/removido naquele momento histórico.
+
+Uma escrita já vale no seu timestamp; uma remoção já torna o campo inexistente
+no timestamp da remoção. A expiração mantém o limite exclusivo do Level 3.
+Considere a última versão escrita até o instante consultado: se ela foi removida
+ou expirou, não retorne uma versão anterior. Consultar o passado não altera o
+estado atual nem o histórico.

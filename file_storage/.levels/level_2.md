@@ -13,6 +13,9 @@ class FileStorage:
 
 Encontre arquivos cujo nome começa com `prefix` **e** termina com `suffix`.
 
+Prefixo ou sufixo vazio corresponde a qualquer nome nesse critério. Os dois
+critérios podem se sobrepor no nome. Retorne `[]` se não houver correspondências.
+
 Retorne no formato:
 ```text
 "<name>(<size>)"

@@ -175,3 +175,61 @@ def test_top_n_employees_with_promoted_peers_and_current_position_hours():
         "dev2(30)",
         "qa1(30)",
     ]
+
+
+def test_same_position_promotion_resets_ranking_only_on_activation():
+    hr = EmployeeSystem()
+    hr.add_employee("emp", "dev", 10)
+    hr.register("emp", 10)
+    hr.register("emp", 30)
+
+    assert hr.promote("emp", "dev", 20, 50) is True
+    assert hr.top_n_employees(1, "dev") == ["emp(20)"]
+    hr.register("emp", 50)
+    assert hr.top_n_employees(1, "dev") == ["emp(0)"]
+    assert hr.get_worked_time("emp") == 20
+
+    hr.register("emp", 60)
+    assert hr.top_n_employees(1, "dev") == ["emp(10)"]
+    assert hr.get_worked_time("emp") == 30
+
+
+def test_returning_to_previous_position_does_not_restore_ranking_time():
+    hr = EmployeeSystem()
+    hr.add_employee("emp", "dev", 10)
+    hr.register("emp", 10)
+    hr.register("emp", 30)  # First dev stage: 20.
+
+    assert hr.promote("emp", "lead", 20, 40) is True
+    hr.register("emp", 40)
+    hr.register("emp", 70)  # Lead stage: 30.
+
+    assert hr.promote("emp", "dev", 30, 80) is True
+    hr.register("emp", 80)
+    assert hr.top_n_employees(1, "dev") == ["emp(0)"]
+    assert hr.top_n_employees(1, "lead") == []
+    hr.register("emp", 90)
+
+    assert hr.top_n_employees(1, "dev") == ["emp(10)"]
+    assert hr.get_worked_time("emp") == 60
+
+
+def test_past_promotion_threshold_does_not_reprocess_existing_registers():
+    hr = EmployeeSystem()
+    hr.add_employee("emp", "junior", 10)
+    hr.register("emp", 10)
+    hr.register("emp", 30)
+    hr.register("emp", 40)
+
+    # The threshold precedes both an old shift and the current open shift.
+    assert hr.promote("emp", "senior", 20, 5) is True
+    assert hr.top_n_employees(1, "junior") == ["emp(20)"]
+    hr.register("emp", 50)
+    assert hr.top_n_employees(1, "junior") == ["emp(30)"]
+    assert hr.top_n_employees(1, "senior") == []
+
+    hr.register("emp", 60)
+    assert hr.top_n_employees(1, "senior") == ["emp(0)"]
+    hr.register("emp", 70)
+    assert hr.top_n_employees(1, "senior") == ["emp(10)"]
+    assert hr.get_worked_time("emp") == 40

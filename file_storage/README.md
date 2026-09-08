@@ -19,6 +19,10 @@ class FileStorage:
 
 ### Requisitos
 
+Os nomes são strings comparadas exatamente como recebidas, sem normalização de
+caminhos. `size` é um inteiro não negativo; arquivos de tamanho zero são válidos.
+Operações que falham não alteram os arquivos existentes.
+
 `add_file(name, size)` adiciona um arquivo:
 - `name` é único.
 - Retorna `False` se já existir.

@@ -128,3 +128,56 @@ def test_decompress_removes_only_the_final_compressed_suffix():
     assert fs.decompress_file("u1", "/archive.COMPRESSED.COMPRESSED") == 300
     assert fs.get_file_size("/archive.COMPRESSED.COMPRESSED") is None
     assert fs.get_file_size("/archive.COMPRESSED") == 200
+
+
+def test_decompress_copied_file_at_exact_capacity_preserves_source_and_owner():
+    fs = FileStorage()
+    fs.add_user("u1", 300)
+    assert fs.add_file_by("u1", "/source", 100) == 200
+    assert fs.copy_file("/source", "/copy.COMPRESSED") is True
+
+    # Suffix, not compression history, determines whether decompression is valid.
+    assert fs.decompress_file("u1", "/copy.COMPRESSED") == 0
+    assert fs.get_file_size("/source") == 100
+    assert fs.get_file_size("/copy") == 200
+    assert fs.get_file_size("/copy.COMPRESSED") is None
+
+    assert fs.compress_file("u1", "/copy") == 100
+    assert fs.get_file_size("/source") == 100
+    assert fs.update_capacity("u1", 100) == 1
+    assert fs.get_file_size("/copy.COMPRESSED") is None
+    assert fs.get_file_size("/source") == 100
+
+
+def test_compression_collisions_with_other_owners_preserve_files_and_quota():
+    fs = FileStorage()
+    fs.add_user("u1", 500)
+    fs.add_user("u2", 100)
+    fs.add_file_by("u1", "/pack", 200)
+    fs.add_file("/pack.COMPRESSED", 1000)
+    fs.add_file_by("u1", "/unpack.COMPRESSED", 100)
+    fs.add_file_by("u2", "/unpack", 50)
+
+    assert fs.compress_file("u1", "/pack") is None
+    assert fs.decompress_file("u1", "/unpack.COMPRESSED") is None
+    assert fs.get_file_size("/pack") == 200
+    assert fs.get_file_size("/pack.COMPRESSED") == 1000
+    assert fs.get_file_size("/unpack.COMPRESSED") == 100
+    assert fs.get_file_size("/unpack") == 50
+    assert fs.add_file_by("u1", "/u1-rest", 200) == 0
+    assert fs.add_file_by("u2", "/u2-rest", 50) == 0
+
+
+def test_compression_rejects_missing_user_without_changing_file():
+    fs = FileStorage()
+    fs.add_user("u1", 300)
+    fs.add_file_by("u1", "/file", 200)
+
+    assert fs.compress_file("ghost", "/file") is None
+    assert fs.get_file_size("/file") == 200
+    assert fs.get_file_size("/file.COMPRESSED") is None
+    assert fs.compress_file("u1", "/file") == 200
+    assert fs.decompress_file("ghost", "/file.COMPRESSED") is None
+    assert fs.get_file_size("/file.COMPRESSED") == 100
+    assert fs.get_file_size("/file") is None
+    assert fs.decompress_file("u1", "/file.COMPRESSED") == 100

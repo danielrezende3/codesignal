@@ -19,8 +19,12 @@ Formato de retorno:
 "<employee_id>(<worked_time>)"
 ```
 
-`worked_time` é o tempo acumulado exclusivamente na posição atual. Depois de
-uma promoção, o tempo trabalhado nas posições anteriores não entra nesse valor.
+`worked_time` soma somente os períodos finalizados pelo funcionário nessa posição.
+
+Inclua funcionários com tempo `0`, inclusive aqueles com um período ainda aberto.
+`n` é um inteiro não negativo. Retorne no máximo `n` resultados; se houver menos
+funcionários na posição, retorne todos eles. Retorne `[]` quando `n == 0` ou
+nenhum funcionário tiver a posição solicitada.
 
 Ordenação:
 1. Tempo trabalhado decrescente;

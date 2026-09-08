@@ -164,3 +164,51 @@ def test_reduced_capacity_is_persisted_after_removing_files():
     assert fs.get_file_size("/large") is None
     assert fs.add_file_by("u1", "/too-much", 101) is None
     assert fs.add_file_by("u1", "/fits", 100) == 0
+
+
+def test_duplicate_user_preserves_existing_files_and_remaining_capacity():
+    fs = FileStorage()
+    assert fs.add_user("u1", 300) is True
+    assert fs.add_file_by("u1", "/keep", 200) == 100
+    assert fs.add_user("u1", 1000) is False
+
+    assert fs.get_file_size("/keep") == 200
+    assert fs.add_file_by("u1", "/too-large", 101) is None
+    assert fs.add_file_by("u1", "/fits", 100) == 0
+    assert fs.update_capacity("u1", 100) == 1
+    assert fs.get_file_size("/keep") is None
+    assert fs.get_file_size("/fits") == 100
+
+
+def test_zero_capacity_allows_empty_files_and_removes_only_positive_sizes():
+    fs = FileStorage()
+    assert fs.add_user("u1", 0) is True
+    assert fs.add_file_by("u1", "/empty", 0) == 0
+    assert fs.copy_file("/empty", "/empty-copy") is True
+    assert fs.add_file_by("u1", "/positive", 1) is None
+    assert fs.update_capacity("u1", 10) == 0
+    assert fs.add_file_by("u1", "/positive", 10) == 0
+
+    assert fs.update_capacity("u1", 0) == 1
+    assert fs.get_file_size("/positive") is None
+    assert fs.find_files("/", "") == ["/empty(0)", "/empty-copy(0)"]
+    assert fs.update_capacity("u1", 0) == 0
+
+
+def test_removed_filename_can_be_reused_by_another_owner():
+    fs = FileStorage()
+    fs.add_user("u1", 100)
+    fs.add_user("u2", 200)
+    assert fs.add_file_by("u1", "/shared", 100) == 0
+    assert fs.update_capacity("u1", 0) == 1
+    assert fs.add_file_by("u2", "/shared", 200) == 0
+
+    # The old owner's bookkeeping must not remove the new owner's file.
+    assert fs.update_capacity("u1", 0) == 0
+    assert fs.get_file_size("/shared") == 200
+    assert fs.update_capacity("u2", 0) == 1
+    assert fs.add_file("/shared", 1000) is True
+    assert fs.copy_file("/shared", "/admin-copy") is True
+    assert fs.update_capacity("u2", 0) == 0
+    assert fs.get_file_size("/shared") == 1000
+    assert fs.get_file_size("/admin-copy") == 1000

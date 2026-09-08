@@ -229,3 +229,24 @@ def test_duplicate_employee_does_not_overwrite_position_or_compensation():
     assert hr.top_n_employees(1, "developer") == ["emp(10)"]
     assert hr.top_n_employees(1, "manager") == []
     assert hr.calc_salary("emp", 0, 100) == 100
+
+
+def test_salary_queries_do_not_activate_promotions_or_change_history():
+    hr = EmployeeSystem()
+    hr.add_employee("emp", "dev", 10)
+    hr.register("emp", 10)
+    hr.register("emp", 30)
+    assert hr.promote("emp", "dev", 20, 50) is True
+
+    assert hr.calc_salary("emp", 0, 1000) == 200
+    assert hr.top_n_employees(1, "dev") == ["emp(20)"]
+    assert hr.promote("emp", "lead", 30, 100) is False
+
+    # A future salary query must not advance the register clock or close a shift.
+    hr.register("emp", 50)
+    assert hr.calc_salary("emp", 0, 1000) == 200
+    hr.register("emp", 60)
+    assert hr.calc_salary("emp", 0, 1000) == 400
+    assert hr.calc_salary("emp", 10, 30) == 200
+    assert hr.calc_salary("emp", 50, 60) == 200
+    assert hr.get_worked_time("emp") == 30

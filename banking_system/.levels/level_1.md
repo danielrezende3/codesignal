@@ -15,6 +15,11 @@ class BankingSystem:
 
 ### Requisitos
 
+Os timestamps são inteiros não negativos, em ordem estritamente crescente entre
+todas as chamadas, como indicado no cabeçalho. `amount` é sempre um inteiro
+estritamente positivo; não é necessário tratar valores zero ou negativos.
+Operações que falham não alteram contas ou saldos.
+
 `create_account(timestamp, account_id)`:
 - Cria conta com saldo `0`.
 - Não permite ID duplicado (retorna `False` se já existir; caso contrário `True`).
