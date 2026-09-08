@@ -54,6 +54,7 @@ Regras:
 * Depois que uma promoção for ativada, outra promoção já pode ser agendada, inclusive antes da saída do turno atual.
 * Se um funcionário já estiver dentro do escritório quando `start_timestamp` for alcançado, seu turno atual continua pertencendo à posição em que foi iniciado. A promoção será aplicada somente em uma entrada futura.
 * `start_timestamp` não altera nem reprocessa registros anteriores. Ele apenas define o menor timestamp em que uma futura entrada pode ativar a promoção.
+* `start_timestamp` é um limite de ativação, não o instante da chamada de `promote()`, e não precisa seguir a ordem dos timestamps de `register()`.
 * `new_compensation` e `start_timestamp` são inteiros não negativos.
 * É permitido:
 
