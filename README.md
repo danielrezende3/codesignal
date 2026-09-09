@@ -9,6 +9,7 @@ Simulados inspirados nas avaliações progressivas do [CodeSignal](https://suppo
 - [**File Storage**](./file_storage/README.md)
 - [**Employee System**](./employee_system/README.md)
 - [**Banking System**](./banking_system/README.md)
+- [**Parcel Tracking System**](./parcel_tracking_system/README.md)
 
 ## 🚀 Como Treinar (Simulação Passo a Passo)
 
